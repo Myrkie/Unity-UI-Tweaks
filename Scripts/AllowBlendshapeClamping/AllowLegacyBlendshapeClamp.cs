@@ -18,6 +18,7 @@ public class AllowLegacyBlendshapeClamp : Editor
 
     static AllowLegacyBlendshapeClamp()
     {
+        _harmonyInstance = new Harmony("AllowLegacyBlendshapeClamp");
         try
         {
             Debug.Log("SetPlayerSettings: Attempting to allow mesh Shapekey clamping to be disable");
