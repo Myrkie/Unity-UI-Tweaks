@@ -42,6 +42,9 @@ After installation, you can start benefiting from the added functionalities prov
 ## Compatibility
 Unity-UI-Tweaks is compatible with Unity versions 2022.3.6f1. Ensure that your Unity project meets the minimum version requirements to utilize these enhancements.
 
+## Requirments
+Unity-UI-Tweaks requires harmony, this by default is included with VRChats SDK V3.0.0 and above as it includes harmony, if you are using an older version or plan to use Chillout VR download and add harmony to your projects asset folder from https://github.com/pardeike/Harmony/releases
+
 ## Contributing
 Contributions to Unity-UI-Tweaks are welcome! If you have ideas for additional Harmony patches or improvements to existing ones, feel free to submit a pull request or open an issue on this repository.
 
