@@ -18,6 +18,9 @@ Unity-UI-Tweaks is a Unity package repository aimed at enhancing the usability a
 6. Paste the copied Git URL into the input field.
 7. Click `Add` to import the package into your Unity project.
 
+![firefox_deAvgkySZN](https://github.com/Myrkie/Unity-UI-Tweaks/assets/20288698/172df39f-6044-4276-aa1c-10fb1cded7cf)
+
+
 ### Option 2: Manual Download
 1. Download or clone the source code of this repository.
 2. Extract the downloaded ZIP file into your unity your projects **Packages** folder
