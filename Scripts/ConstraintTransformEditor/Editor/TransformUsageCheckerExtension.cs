@@ -4,80 +4,85 @@ using UnityEditor;
 using UnityEngine.Animations;
 using System.Collections.Generic;
 
-[CustomEditor(typeof(Transform), true)]
-[CanEditMultipleObjects]
-public class TransformUsageCheckerExtension : Editor
+namespace MyrkieUiTweaks
 {
-    Editor defaultEditor;
-    private Transform _transform;
-
-    void OnEnable()
+    [CustomEditor(typeof(Transform), true)]
+    [CanEditMultipleObjects]
+    public class TransformUsageCheckerExtension : Editor
     {
-        defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
-        _transform = target as Transform;
-    }
-    
-    public override void OnInspectorGUI(){
-        defaultEditor.OnInspectorGUI();
-        
-        if (!UserChoicePatcherUI.ConstraintTransformEditor) return;
-        if (_transform == null) return;
-        DrawHorizontalGUILine();
-        CheckConstraintUsage(_transform);
-    }
+        Editor defaultEditor;
+        private Transform _transform;
 
-    private void CheckConstraintUsage(Transform targetTransform)
-    {
-        GameObject[] allGameObjects = Resources.FindObjectsOfTypeAll<GameObject>();
-
-        foreach (GameObject obj in allGameObjects)
+        void OnEnable()
         {
-            if (!obj.scene.IsValid())
-                continue;
+            defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
+            _transform = target as Transform;
+        }
 
-            IConstraint[] constraints = obj.GetComponents<IConstraint>();
-            
-            foreach (IConstraint constraint in constraints)
+        public override void OnInspectorGUI()
+        {
+            defaultEditor.OnInspectorGUI();
+
+            if (!UserChoicePatcherUI.ConstraintTransformEditor) return;
+            if (_transform == null) return;
+            DrawHorizontalGUILine();
+            CheckConstraintUsage(_transform);
+        }
+
+        private void CheckConstraintUsage(Transform targetTransform)
+        {
+            GameObject[] allGameObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+
+            foreach (GameObject obj in allGameObjects)
             {
-                if (IsTransformUsedAsSource(constraint, targetTransform))
+                if (!obj.scene.IsValid())
+                    continue;
+
+                IConstraint[] constraints = obj.GetComponents<IConstraint>();
+
+                foreach (IConstraint constraint in constraints)
                 {
-                    if (GUILayout.Button("Uses: " + obj.name + " | " + constraint.GetType().Name))
+                    if (IsTransformUsedAsSource(constraint, targetTransform))
                     {
-                        EditorGUIUtility.PingObject(obj);
+                        if (GUILayout.Button("Uses: " + obj.name + " | " + constraint.GetType().Name))
+                        {
+                            EditorGUIUtility.PingObject(obj);
+                        }
                     }
                 }
             }
         }
-    }
-    
-    // https://forum.unity.com/threads/horizontal-line-in-editor-window.520812/#post-8551211
-    private static void DrawHorizontalGUILine(int height = 1) {
-        GUILayout.Space(4);
-     
-        Rect rect = GUILayoutUtility.GetRect(10, height, GUILayout.ExpandWidth(true));
-        rect.height = height;
-        rect.xMin = 0;
-        rect.xMax = EditorGUIUtility.currentViewWidth;
-     
-        Color lineColor = new Color(0.10196f, 0.10196f, 0.10196f, 1);
-        EditorGUI.DrawRect(rect, lineColor);
-        GUILayout.Space(4);
-    }
 
-
-    private static bool IsTransformUsedAsSource(IConstraint constraint, Transform targetTransform)
-    {
-        List<ConstraintSource> sources = new List<ConstraintSource>();
-        constraint.GetSources(sources);
-
-        foreach (ConstraintSource source in sources)
+        // https://forum.unity.com/threads/horizontal-line-in-editor-window.520812/#post-8551211
+        private static void DrawHorizontalGUILine(int height = 1)
         {
-            if (source.sourceTransform == targetTransform)
-            {
-                return true;
-            }
+            GUILayout.Space(4);
+
+            Rect rect = GUILayoutUtility.GetRect(10, height, GUILayout.ExpandWidth(true));
+            rect.height = height;
+            rect.xMin = 0;
+            rect.xMax = EditorGUIUtility.currentViewWidth;
+
+            Color lineColor = new Color(0.10196f, 0.10196f, 0.10196f, 1);
+            EditorGUI.DrawRect(rect, lineColor);
+            GUILayout.Space(4);
         }
 
-        return false;
+
+        private static bool IsTransformUsedAsSource(IConstraint constraint, Transform targetTransform)
+        {
+            List<ConstraintSource> sources = new List<ConstraintSource>();
+            constraint.GetSources(sources);
+
+            foreach (ConstraintSource source in sources)
+            {
+                if (source.sourceTransform == targetTransform)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

@@ -5,39 +5,45 @@ using UnityEditor;
 using UnityEngine;
 using VRC.Editor;
 
-[InitializeOnLoad]
-public class AllowLegacyBlendshapeClamp : Editor
+namespace MyrkieUiTweaks
 {
-    private static Harmony _harmonyInstance;
-
-    static AllowLegacyBlendshapeClamp()
+    [InitializeOnLoad]
+    public class AllowLegacyBlendshapeClamp : Editor
     {
-        if (!UserChoicePatcherUI.AllowBlendshapeClamping) return;
-        var _harmonyInstance = new Harmony("AllowLegacyBlendshapeClamp");
-        try
+        private static Harmony _harmonyInstance;
+
+        static AllowLegacyBlendshapeClamp()
         {
-            Debug.LogError(UserChoicePatcherUI.DebugLogging);
-            if (UserChoicePatcherUI.DebugLogging)
+            if (!UserChoicePatcherUI.AllowBlendshapeClamping) return;
+            var _harmonyInstance = new Harmony("AllowLegacyBlendshapeClamp");
+            try
             {
-                Debug.Log("SetPlayerSettings: Attempting to allow mesh Shapekey clamping to be disable");
+                if (UserChoicePatcherUI.DebugLogging)
+                {
+                    Debug.Log("SetPlayerSettings: Attempting to allow mesh Shapekey clamping to be disable");
+                }
+
+                var method1 =
+                    typeof(EnvConfig).GetMethod("SetPlayerSettings", BindingFlags.NonPublic | BindingFlags.Static);
+                _harmonyInstance.Patch(method1,
+                    postfix: new HarmonyMethod(typeof(AllowLegacyBlendshapeClamp), nameof(PostfixShapekeys)));
+                if (UserChoicePatcherUI.DebugLogging)
+                {
+                    Debug.Log("SetPlayerSettings: Shapekey Clamping can now be turned off!");
+                }
             }
-            var method1 = typeof(EnvConfig).GetMethod("SetPlayerSettings", BindingFlags.NonPublic | BindingFlags.Static);
-            _harmonyInstance.Patch(method1, postfix: new HarmonyMethod(typeof(AllowLegacyBlendshapeClamp), nameof(PostfixShapekeys)));
-            if (UserChoicePatcherUI.DebugLogging)
+            catch (Exception ex)
             {
-                Debug.Log("SetPlayerSettings: Shapekey Clamping can now be turned off!");
-            }
-        } catch (Exception ex) 
-        {
-            if (UserChoicePatcherUI.DebugLogging)
-            {
-                Debug.LogError($"SetPlayerSettings: Failed to patch SetPlayerSettings! - {ex}");
+                if (UserChoicePatcherUI.DebugLogging)
+                {
+                    Debug.LogError($"SetPlayerSettings: Failed to patch SetPlayerSettings! - {ex}");
+                }
             }
         }
-    }
 
-    static void PostfixShapekeys()
-    {
-        PlayerSettings.legacyClampBlendShapeWeights = false;
+        static void PostfixShapekeys()
+        {
+            PlayerSettings.legacyClampBlendShapeWeights = false;
+        }
     }
 }
