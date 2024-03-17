@@ -20,15 +20,16 @@ namespace MyrkieUiTweaks
             public static readonly GUIContent LegacyClampBlendShapeWeightsInfo =
                 EditorGUIUtility.TrTextContent(
                     "Note that BlendShape weight range is clamped. This can be disabled in Player Settings.");
+
             public static readonly GUIContent NoActiveBlendShapes =
-                EditorGUIUtility.TrTextContent(
-                    "No BlendShapes exist on this Mesh.");
+                EditorGUIUtility.TrTextContent("No BlendShapes exist on this Mesh.");
+
             public static readonly GUIStyle YellowTextStyle = new GUIStyle(EditorStyles.label)
             {
-                normal = {textColor = Color.yellow}
+                normal = { textColor = Color.yellow }
             };
         }
-        
+
         static BlendshapeSearch()
         {
             var harmonyInstance = new Harmony("BlendshapeSearch");
@@ -43,7 +44,10 @@ namespace MyrkieUiTweaks
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to patch OnBlendShapeUI method: {ex}");
+                if (UserChoicePatcherUI.DebugLogging)
+                {
+                    Debug.LogError($"Failed to patch OnBlendShapeUI method: {ex}");
+                }
             }
         }
 
@@ -70,7 +74,6 @@ namespace MyrkieUiTweaks
             // Collect common blend shapes among all selected objects
             HashSet<string> commonBlendShapes = new HashSet<string>();
             bool firstObject = true;
-
             foreach (var target in _defaultEditor.targets)
             {
                 SkinnedMeshRenderer renderer = target as SkinnedMeshRenderer;
@@ -78,7 +81,6 @@ namespace MyrkieUiTweaks
                 {
                     Mesh sharedMesh = renderer.sharedMesh;
                     if (sharedMesh == null) continue;
-
                     List<string> blendShapes = new List<string>();
                     for (int i = 0; i < sharedMesh.blendShapeCount; i++)
                     {
@@ -124,13 +126,10 @@ namespace MyrkieUiTweaks
                     SerializedObject serializedRenderer = new SerializedObject(renderer);
                     SerializedProperty blendShapeWeightsProperty =
                         serializedRenderer.FindProperty("m_BlendShapeWeights");
-
                     if (blendShapeWeightsProperty == null) continue;
-
                     Mesh sharedMesh = renderer.sharedMesh;
                     var blendShapeCount = renderer.sharedMesh.blendShapeCount;
                     if (sharedMesh == null) continue;
-
                     float maxLabelWidth = 0f;
                     if (blendShapeCount < 1)
                     {
@@ -140,9 +139,9 @@ namespace MyrkieUiTweaks
                     for (int i = 0; i < blendShapeCount; i++)
                     {
                         string blendShapeName = sharedMesh.GetBlendShapeName(i);
-                        if (commonBlendShapes.Contains(blendShapeName) &&
-                            (string.IsNullOrEmpty(_searchQuery) ||
-                             blendShapeName.ToLower().Contains(_searchQuery.ToLower())))
+                        if (commonBlendShapes.Contains(blendShapeName) && (string.IsNullOrEmpty(_searchQuery) ||
+                                                                           blendShapeName.ToLower()
+                                                                               .Contains(_searchQuery.ToLower())))
                         {
                             EditorGUILayout.BeginHorizontal();
                             if (_defaultEditor.targets.Length < 2)
@@ -167,10 +166,9 @@ namespace MyrkieUiTweaks
                                                     EditorGUIUtility.standardVerticalSpacing;
                                 EditorGUI.BeginProperty(labelRect, GUIContent.none, blendShapeWeightProperty);
                                 EditorGUI.BeginChangeCheck();
-                                float newValue =
-                                    EditorGUI.Slider(
-                                        new Rect(labelRect.x + labelWidth, labelRect.y, sliderWidth, labelRect.height),
-                                        blendShapeWeightProperty.floatValue, 0f, 100f);
+                                float newValue = EditorGUI.Slider(
+                                    new Rect(labelRect.x + labelWidth, labelRect.y, sliderWidth, labelRect.height),
+                                    blendShapeWeightProperty.floatValue, 0f, 100f);
                                 if (EditorGUI.EndChangeCheck())
                                 {
                                     blendShapeWeightProperty.floatValue = newValue;
