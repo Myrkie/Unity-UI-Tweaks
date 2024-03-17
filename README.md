@@ -9,6 +9,8 @@ Unity-UI-Tweaks is a Unity package repository aimed at enhancing the usability a
 
 3. **AllowBlendshapeClamping**: This patch undoes a change done in VRChat SDK V3.5.0 which forces legacy blendshape clamping in editor, for people who use VRCFury blendshape baking this makes it impossible to increase blendshapes past intended values and then save the blendshapes on upload into an allowed range.
 
+4. **DisableMouseJumping**: This will patch unity's mouse jumping feature introduced around unity 2022 and disable it, such as setting a slider and going off screen.
+
 ## Installation
 
 ### Option 1: Git Package (Recommended)
@@ -43,6 +45,7 @@ After installation, you can start benefiting from the added functionalities prov
 
 - **AllowBlendshapeClamping**: This is an automatically applied patch and requires no user input.
 
+- **DisableMouseJumping**: This is an automatically applied patch and requires no user input. 
 
 
 ## Compatibility
