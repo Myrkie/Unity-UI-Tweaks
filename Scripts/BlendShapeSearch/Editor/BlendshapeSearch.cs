@@ -20,6 +20,7 @@ public class BlendshapeSearch : Editor
 
     static BlendshapeSearch()
     {
+        if (!UserChoicePatcherUI.BlendShapeSearch) return;
         var harmonyInstance = new Harmony("BlendshapeSearch");
         try
         {
@@ -32,7 +33,10 @@ public class BlendshapeSearch : Editor
         }
         catch (Exception ex)
         {
-            Debug.LogError($"Failed to patch OnBlendShapeUI method: {ex}");
+            if (UserChoicePatcherUI.DebugLogging)
+            {
+                Debug.LogError($"Failed to patch OnBlendShapeUI method: {ex}");
+            }
         }
     }
 
@@ -76,7 +80,11 @@ public class BlendshapeSearch : Editor
         var sharedMesh = renderer.sharedMesh;
         if (sharedMesh == null)
         {
-            Debug.LogWarning("No shared mesh found.");
+            if (UserChoicePatcherUI.DebugLogging)
+            {
+                Debug.LogWarning("No shared mesh found.");
+            }
+
             return;
         }
 
@@ -84,7 +92,11 @@ public class BlendshapeSearch : Editor
         SerializedProperty blendShapeWeightsProperty = serializedRenderer.FindProperty("m_BlendShapeWeights");
         if (blendShapeWeightsProperty == null)
         {
-            Debug.LogWarning("No blend shape weights property found.");
+            if (UserChoicePatcherUI.DebugLogging)
+            {
+                Debug.LogWarning("No blend shape weights property found.");
+            }
+
             return;
         }
 
@@ -95,7 +107,11 @@ public class BlendshapeSearch : Editor
             SerializedProperty blendShapeWeightProperty = blendShapeWeightsProperty.GetArrayElementAtIndex(i);
             if (blendShapeWeightProperty == null)
             {
-                Debug.LogWarning($"Blend shape weight property at index {i} is null.");
+                if (UserChoicePatcherUI.DebugLogging)
+                {
+                    Debug.LogWarning($"Blend shape weight property at index {i} is null.");
+                }
+
                 continue;
             }
 

@@ -10,15 +10,17 @@ public class TransformUsageCheckerExtension : Editor
 {
     Editor defaultEditor;
     private Transform _transform;
-    void OnEnable(){
+
+    void OnEnable()
+    {
         defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
         _transform = target as Transform;
- 
     }
     
     public override void OnInspectorGUI(){
         defaultEditor.OnInspectorGUI();
         
+        if (!UserChoicePatcherUI.ConstraintTransformEditor) return;
         if (_transform == null) return;
         DrawHorizontalGUILine();
         CheckConstraintUsage(_transform);

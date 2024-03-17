@@ -7,6 +7,8 @@ Unity-UI-Tweaks is a Unity package repository aimed at enhancing the usability a
 
 2. **ConstraintTransformEditor**: This patch provides information on constraints that reference a given transform as a source. It helps identify which constraints are affecting a selected transform.
 
+3. **AllowBlendshapeClamping**: This patch undoes a change done in VRChat SDK V3.5.0 which forces legacy blendshape clamping in editor, for people who use VRCFury blendshape baking this makes it impossible to increase blendshapes past intended values and then save the blendshapes on upload into an allowed range.
+
 ## Installation
 
 ### Option 1: Git Package (Recommended)
@@ -38,6 +40,10 @@ After installation, you can start benefiting from the added functionalities prov
 - **ConstraintTransformEditor**: When working with constraints in Unity, you can now easily identify which constraints reference a specific transform as a source. This information is displayed within the Unity Editor, aiding in the debugging and optimization of constraint-based animations and interactions.
 
 ![Unity_g7y47zO0g4](https://github.com/Myrkie/Unity-UI-Tweaks/assets/20288698/6df1769a-83b0-44e1-95ec-58fb8ec6914c)
+
+- **AllowBlendshapeClamping**: This is an automatically applied patch and requires no user input.
+
+
 
 ## Compatibility
 Unity-UI-Tweaks is compatible with Unity versions 2022.3.6f1. Ensure that your Unity project meets the minimum version requirements to utilize these enhancements.
