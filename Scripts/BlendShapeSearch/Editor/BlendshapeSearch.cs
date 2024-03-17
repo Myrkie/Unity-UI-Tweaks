@@ -19,6 +19,9 @@ namespace MyrkieUiTweaks
             public static readonly GUIContent LegacyClampBlendShapeWeightsInfo =
                 EditorGUIUtility.TrTextContent(
                     "Note that BlendShape weight range is clamped. This can be disabled in Player Settings.");
+            public static readonly GUIContent NoActiveBlendShapes =
+                EditorGUIUtility.TrTextContent(
+                    "No BlendShapes exist on this Mesh.");
         }
 
         static BlendshapeSearch()
@@ -104,7 +107,11 @@ namespace MyrkieUiTweaks
             }
 
             int blendShapeCount = sharedMesh.blendShapeCount;
-            blendShapeWeightsProperty.arraySize = blendShapeCount; // Adjust array size
+            blendShapeWeightsProperty.arraySize = blendShapeCount;
+            if (blendShapeCount < 1)
+            {
+                EditorGUILayout.HelpBox(Styles.NoActiveBlendShapes.text, MessageType.Info);
+            }
             for (int i = 0; i < blendShapeCount; i++)
             {
                 SerializedProperty blendShapeWeightProperty = blendShapeWeightsProperty.GetArrayElementAtIndex(i);
