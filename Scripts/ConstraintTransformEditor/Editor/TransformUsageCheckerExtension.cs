@@ -20,6 +20,7 @@ public class TransformUsageCheckerExtension : Editor
         defaultEditor.OnInspectorGUI();
         
         if (_transform == null) return;
+        DrawHorizontalGUILine();
         CheckConstraintUsage(_transform);
     }
 
@@ -33,12 +34,12 @@ public class TransformUsageCheckerExtension : Editor
                 continue;
 
             IConstraint[] constraints = obj.GetComponents<IConstraint>();
-
+            
             foreach (IConstraint constraint in constraints)
             {
                 if (IsTransformUsedAsSource(constraint, targetTransform))
                 {
-                    if (GUILayout.Button("Constraint usage: " + obj.name + " - " + constraint.GetType().Name))
+                    if (GUILayout.Button("Uses: " + obj.name + " | " + constraint.GetType().Name))
                     {
                         EditorGUIUtility.PingObject(obj);
                     }
@@ -46,6 +47,21 @@ public class TransformUsageCheckerExtension : Editor
             }
         }
     }
+    
+    // https://forum.unity.com/threads/horizontal-line-in-editor-window.520812/#post-8551211
+    private static void DrawHorizontalGUILine(int height = 1) {
+        GUILayout.Space(4);
+     
+        Rect rect = GUILayoutUtility.GetRect(10, height, GUILayout.ExpandWidth(true));
+        rect.height = height;
+        rect.xMin = 0;
+        rect.xMax = EditorGUIUtility.currentViewWidth;
+     
+        Color lineColor = new Color(0.10196f, 0.10196f, 0.10196f, 1);
+        EditorGUI.DrawRect(rect, lineColor);
+        GUILayout.Space(4);
+    }
+
 
     private static bool IsTransformUsedAsSource(IConstraint constraint, Transform targetTransform)
     {
