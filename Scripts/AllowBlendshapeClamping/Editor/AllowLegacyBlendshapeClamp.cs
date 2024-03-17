@@ -23,8 +23,7 @@ namespace MyrkieUiTweaks
                     Debug.Log("SetPlayerSettings: Attempting to allow mesh Shapekey clamping to be disable");
                 }
 
-                var method1 =
-                    typeof(EnvConfig).GetMethod("SetPlayerSettings", BindingFlags.NonPublic | BindingFlags.Static);
+                var method1 = typeof(EnvConfig).GetMethod("SetPlayerSettings", BindingFlags.NonPublic | BindingFlags.Static);
                 _harmonyInstance.Patch(method1,
                     postfix: new HarmonyMethod(typeof(AllowLegacyBlendshapeClamp), nameof(PostfixShapekeys)));
                 if (UserChoicePatcherUI.DebugLogging)
