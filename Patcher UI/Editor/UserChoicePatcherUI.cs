@@ -46,14 +46,14 @@ namespace MyrkieUiTweaks
             {
                 EditorPrefs.SetBool("UserChoicePatcher_ConstraintTransformEditor", ConstraintTransformEditor);
             }
-
+#if VRC_SDK_VRCSDK3
             EditorGUI.BeginChangeCheck();
             AllowBlendshapeClamping = EditorGUILayout.Toggle("AllowBlendshapeClamping", AllowBlendshapeClamping);
             if (EditorGUI.EndChangeCheck())
             {
                 EditorPrefs.SetBool("UserChoicePatcher_AllowBlendshapeClamping", AllowBlendshapeClamping);
             }
-            
+#endif
             EditorGUI.BeginChangeCheck();
             DisableMouseJumping = EditorGUILayout.Toggle("DisableMouseJumping", DisableMouseJumping);
             if (EditorGUI.EndChangeCheck())
@@ -75,7 +75,9 @@ namespace MyrkieUiTweaks
             DebugLogging = EditorPrefs.GetBool("UserChoicePatcher_DebugLogging", true);
             BlendShapeSearch = EditorPrefs.GetBool("UserChoicePatcher_BlendShapeSearch", true);
             ConstraintTransformEditor = EditorPrefs.GetBool("UserChoicePatcher_ConstraintTransformEditor", true);
+#if VRC_SDK_VRCSDK3
             AllowBlendshapeClamping = EditorPrefs.GetBool("UserChoicePatcher_AllowBlendshapeClamping", true);
+#endif
             DisableMouseJumping = EditorPrefs.GetBool("UserChoicePatcher_DisableMouseJumping", true);
         }
     }

@@ -7,6 +7,7 @@ using VRC.Editor;
 
 namespace MyrkieUiTweaks
 {
+#if VRC_SDK_VRCSDK3
     [InitializeOnLoad]
     public class AllowLegacyBlendshapeClamp : Editor
     {
@@ -45,4 +46,5 @@ namespace MyrkieUiTweaks
             PlayerSettings.legacyClampBlendShapeWeights = false;
         }
     }
+#endif
 }
