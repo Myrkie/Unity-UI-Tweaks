@@ -4,6 +4,8 @@ using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.IMGUI.Controls;
+using UnityEditorInternal;
 
 namespace MyrkieUiTweaks
 {
@@ -14,7 +16,8 @@ namespace MyrkieUiTweaks
         private static string _searchQuery;
         private static bool _showBlendshapes;
         private static Editor _defaultEditor;
-
+        private readonly BoxBoundsHandle _BoundsHandle = new();
+        
         class Styles
         {
             public static readonly GUIContent LegacyClampBlendShapeWeightsInfo =
@@ -23,8 +26,8 @@ namespace MyrkieUiTweaks
 
             public static readonly GUIContent NoActiveBlendShapes =
                 EditorGUIUtility.TrTextContent("No BlendShapes exist on this Mesh.");
-
-            public static readonly GUIStyle YellowTextStyle = new GUIStyle(EditorStyles.label)
+            
+            public static readonly GUIStyle YellowTextStyle = new(EditorStyles.label)
             {
                 normal = { textColor = Color.yellow }
             };
@@ -59,9 +62,48 @@ namespace MyrkieUiTweaks
             }
         }
 
+        public void OnSceneGUI()
+        {
+            // was unable to figure out how to reflect this code, and its not overridable.
+            // so I had to copy most of it from unity CS reference and modify
+            // https://github.com/Unity-Technologies/UnityCsReference/blob/6c8a95ff127619e73519662fa497e242b898f9af/Editor/Mono/Inspector/SkinnedMeshRendererEditor.cs#L170
+            if (!_defaultEditor.target)
+                return;
+            SkinnedMeshRenderer renderer = (SkinnedMeshRenderer)_defaultEditor.target;
+
+            if (renderer.updateWhenOffscreen)
+            {
+                Bounds bounds = renderer.bounds;
+                Vector3 center = bounds.center;
+                Vector3 size = bounds.size;
+
+                Handles.DrawWireCube(center, size);
+            }
+            else
+            {
+                using (new Handles.DrawingScope(renderer.rootBone.localToWorldMatrix))
+                {
+                    Bounds bounds = renderer.localBounds;
+                    _BoundsHandle.center = bounds.center;
+                    _BoundsHandle.size = bounds.size;
+                    
+                    _BoundsHandle.handleColor = EditMode.editMode == EditMode.SceneViewEditMode.Collider && EditMode.IsOwner(_defaultEditor) ?
+                        _BoundsHandle.wireframeColor : Color.clear;
+                    
+
+                    EditorGUI.BeginChangeCheck();
+                    _BoundsHandle.DrawHandle();
+                    if (!EditorGUI.EndChangeCheck()) return;
+                    Undo.RecordObject(renderer, "Resize Bounds");
+                    renderer.localBounds = new Bounds(_BoundsHandle.center, _BoundsHandle.size);
+                }
+            }
+        }
+
         void OnEnable()
         {
             _defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.SkinnedMeshRendererEditor, UnityEditor"));
+            _BoundsHandle.SetColor(new Color(255, 255, 255, 150) / 255);
         }
 
         public static bool PrefixMethod()
