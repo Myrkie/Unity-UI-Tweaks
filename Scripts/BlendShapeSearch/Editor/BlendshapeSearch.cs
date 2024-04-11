@@ -128,17 +128,42 @@ namespace MyrkieUiTweaks
                         serializedRenderer.FindProperty("m_BlendShapeWeights");
                     if (blendShapeWeightsProperty == null) continue;
                     Mesh sharedMesh = renderer.sharedMesh;
-                    var blendShapeCount = renderer.sharedMesh.blendShapeCount;
                     if (sharedMesh == null) continue;
+                    int blendShapeCount = sharedMesh.blendShapeCount;
+                    int currentBlendShapeCount = blendShapeWeightsProperty.arraySize;
+
+                    #region Sync Shapes
+                    // Synchronize blend shape names and create a map
+                    // This is done because for some weird reason the blendshape `m_BlendShapeWeights` can be mismatched in the skinmesh renderer
+                    // this is done to sync the blendshapes from the mesh to the skinmesh renderer, probably terrible way to do this but it works 
+                    
+                    if (blendShapeCount != currentBlendShapeCount)
+                    {
+                        blendShapeWeightsProperty.arraySize = blendShapeCount;
+                    }
+
+                    Dictionary<string, SerializedProperty> blendShapeMap = new Dictionary<string, SerializedProperty>();
+                    
+                    for (int i = 0; i < blendShapeCount; i++)
+                    {
+                        string blendShapeName = sharedMesh.GetBlendShapeName(i);
+                        SerializedProperty blendShapeWeightProperty =
+                            blendShapeWeightsProperty.GetArrayElementAtIndex(i);
+                        blendShapeMap[blendShapeName] = blendShapeWeightProperty;
+                    }
+
+                    #endregion
+
+                    serializedRenderer.ApplyModifiedProperties();
+
                     float maxLabelWidth = 0f;
                     if (blendShapeCount < 1)
                     {
                         EditorGUILayout.HelpBox(Styles.NoActiveBlendShapes.text, MessageType.Info);
                     }
 
-                    for (int i = 0; i < blendShapeCount; i++)
+                    foreach (var blendShapeName in blendShapeMap.Keys)
                     {
-                        string blendShapeName = sharedMesh.GetBlendShapeName(i);
                         if (commonBlendShapes.Contains(blendShapeName) && (string.IsNullOrEmpty(_searchQuery) ||
                                                                            blendShapeName.ToLower()
                                                                                .Contains(_searchQuery.ToLower())))
@@ -156,8 +181,7 @@ namespace MyrkieUiTweaks
                                 EditorGUILayout.EndVertical();
                             }
 
-                            SerializedProperty blendShapeWeightProperty =
-                                blendShapeWeightsProperty.GetArrayElementAtIndex(i);
+                            SerializedProperty blendShapeWeightProperty = blendShapeMap[blendShapeName];
                             if (blendShapeWeightProperty != null)
                             {
                                 Rect labelRect = GUILayoutUtility.GetLastRect();
