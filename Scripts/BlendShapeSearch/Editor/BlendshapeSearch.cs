@@ -198,7 +198,6 @@ namespace MyrkieUiTweaks
 
                     serializedRenderer.ApplyModifiedProperties();
 
-                    float maxLabelWidth = 0f;
                     if (blendShapeCount < 1)
                     {
                         EditorGUILayout.HelpBox(Styles.NoActiveBlendShapes.text, MessageType.Info);
@@ -211,37 +210,32 @@ namespace MyrkieUiTweaks
                                                                                .Contains(_searchQuery.ToLower())))
                         {
                             EditorGUILayout.BeginHorizontal();
-                            if (_defaultEditor.targets.Length < 2)
-                            {
-                                EditorGUILayout.LabelField(blendShapeName);
-                            }
-                            else
-                            {
-                                EditorGUILayout.BeginVertical();
-                                EditorGUILayout.LabelField(sharedMesh.name, Styles.YellowTextStyle);
-                                EditorGUILayout.LabelField(blendShapeName);
-                                EditorGUILayout.EndVertical();
-                            }
-
-                            SerializedProperty blendShapeWeightProperty = blendShapeMap[blendShapeName];
-                            if (blendShapeWeightProperty != null)
-                            {
-                                Rect labelRect = GUILayoutUtility.GetLastRect();
-                                float labelWidth = EditorGUIUtility.labelWidth;
-                                float sliderWidth = EditorGUIUtility.currentViewWidth - labelRect.x - labelWidth -
-                                                    EditorGUIUtility.standardVerticalSpacing;
-                                EditorGUI.BeginProperty(labelRect, GUIContent.none, blendShapeWeightProperty);
-                                EditorGUI.BeginChangeCheck();
-                                float newValue = EditorGUI.Slider(
-                                    new Rect(labelRect.x + labelWidth, labelRect.y, sliderWidth, labelRect.height),
-                                    blendShapeWeightProperty.floatValue, 0f, 100f);
-                                if (EditorGUI.EndChangeCheck())
-                                {
-                                    blendShapeWeightProperty.floatValue = newValue;
-                                }
-
-                                EditorGUI.EndProperty();
-                            }
+                           SerializedProperty blendShapeWeightProperty = blendShapeMap[blendShapeName];
+                           if (blendShapeWeightProperty != null)
+                           {
+                               if (_defaultEditor.targets.Length < 2)
+                               {
+                                   GUIContent content = new GUIContent(blendShapeName);
+    
+                                   EditorGUI.BeginChangeCheck();
+                                   EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
+                                   if (EditorGUI.EndChangeCheck())
+                                   {
+                                       blendShapeWeightProperty.serializedObject.ApplyModifiedProperties();
+                                   }
+                               }
+                               else
+                               {
+                                   GUIContent content = new GUIContent($"{sharedMesh.name}-{blendShapeName}");
+    
+                                   EditorGUI.BeginChangeCheck();
+                                   EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
+                                   if (EditorGUI.EndChangeCheck())
+                                   {
+                                       blendShapeWeightProperty.serializedObject.ApplyModifiedProperties();
+                                   }
+                               }
+                           }
 
                             EditorGUILayout.EndHorizontal();
                         }
