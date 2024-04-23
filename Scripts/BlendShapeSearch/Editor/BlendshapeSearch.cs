@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
@@ -16,6 +17,7 @@ namespace MyrkieUiTweaks
         private static string _searchQuery;
         private static bool _showBlendshapes;
         private static Editor _defaultEditor;
+        private static MethodInfo sliderMethod;
         private readonly BoxBoundsHandle _BoundsHandle = new();
         
         class Styles
@@ -52,6 +54,27 @@ namespace MyrkieUiTweaks
                     Debug.LogError($"Failed to patch OnBlendShapeUI method: {ex}");
                 }
             }
+            SliderPatch();
+        }
+
+        private static void SliderPatch()
+        {
+            var sliderMethods = typeof(EditorGUILayout).GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                .Where(method => method.Name == "Slider")
+                .ToArray();
+
+            sliderMethod = sliderMethods.FirstOrDefault(method =>
+            {
+                ParameterInfo[] parameters = method.GetParameters();
+                return parameters.Length == 7 &&
+                       parameters[0].ParameterType == typeof(SerializedProperty) &&
+                       parameters[1].ParameterType == typeof(float) &&
+                       parameters[2].ParameterType == typeof(float) &&
+                       parameters[3].ParameterType == typeof(float) &&
+                       parameters[4].ParameterType == typeof(float) &&
+                       parameters[5].ParameterType == typeof(GUIContent) &&
+                       parameters[6].ParameterType == typeof(GUILayoutOption[]);
+            });
         }
 
         public override void OnInspectorGUI()
@@ -218,7 +241,17 @@ namespace MyrkieUiTweaks
                                    GUIContent content = new GUIContent(blendShapeName);
     
                                    EditorGUI.BeginChangeCheck();
-                                   EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
+
+                                   if (sliderMethod != null && !PlayerSettings.legacyClampBlendShapeWeights)
+                                   {
+                                       object[] parameters = { blendShapeWeightProperty, 0f, 100f, float.MinValue, float.MaxValue, content, null };
+                                       sliderMethod.Invoke(null, parameters);
+                                   }
+                                   else
+                                   {
+                                       EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
+                                   }
+                                   
                                    if (EditorGUI.EndChangeCheck())
                                    {
                                        blendShapeWeightProperty.serializedObject.ApplyModifiedProperties();
@@ -229,7 +262,17 @@ namespace MyrkieUiTweaks
                                    GUIContent content = new GUIContent($"{sharedMesh.name}-{blendShapeName}");
     
                                    EditorGUI.BeginChangeCheck();
-                                   EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
+                                   
+                                   if (sliderMethod != null && !PlayerSettings.legacyClampBlendShapeWeights)
+                                   {
+                                       object[] parameters = { blendShapeWeightProperty, 0f, 100f, float.MinValue, float.MaxValue, content, null };
+                                       sliderMethod.Invoke(null, parameters);
+                                   }
+                                   else
+                                   {
+                                       EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
+                                   }
+                                   
                                    if (EditorGUI.EndChangeCheck())
                                    {
                                        blendShapeWeightProperty.serializedObject.ApplyModifiedProperties();
