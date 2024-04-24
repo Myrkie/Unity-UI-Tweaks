@@ -129,6 +129,15 @@ namespace MyrkieUiTweaks
             _BoundsHandle.SetColor(new Color(255, 255, 255, 150) / 255);
         }
 
+        private void OnDisable()
+        {
+            // disposing of this to make sure it doesnt cause any leaks
+            if (_defaultEditor != null)
+            {
+                DestroyImmediate(_defaultEditor);
+            }
+        }
+
         public static bool PrefixMethod()
         {
             return false;
@@ -185,107 +194,72 @@ namespace MyrkieUiTweaks
         {
             foreach (var target in _defaultEditor.targets)
             {
-                SkinnedMeshRenderer renderer = target as SkinnedMeshRenderer;
-                if (renderer != null)
+                var renderer = target as SkinnedMeshRenderer;
+                if (renderer == null) continue;
+                var serializedRenderer = new SerializedObject(renderer);
+                var blendShapeWeightsProperty = serializedRenderer.FindProperty("m_BlendShapeWeights");
+                if (blendShapeWeightsProperty == null) continue;
+                var sharedMesh = renderer.sharedMesh;
+                if (sharedMesh == null) continue;
+                var blendShapeCount = sharedMesh.blendShapeCount;
+                var currentBlendShapeCount = blendShapeWeightsProperty.arraySize;
+
+                #region Sync Shapes
+                // Synchronize blend shape names and create a map
+                // This is done because for some weird reason the blendshape `m_BlendShapeWeights` can be mismatched in the skinmesh renderer
+                // this is done to sync the blendshapes from the mesh to the skinmesh renderer, probably terrible way to do this but it works 
+                if (blendShapeCount != currentBlendShapeCount)
                 {
-                    SerializedObject serializedRenderer = new SerializedObject(renderer);
-                    SerializedProperty blendShapeWeightsProperty =
-                        serializedRenderer.FindProperty("m_BlendShapeWeights");
-                    if (blendShapeWeightsProperty == null) continue;
-                    Mesh sharedMesh = renderer.sharedMesh;
-                    if (sharedMesh == null) continue;
-                    int blendShapeCount = sharedMesh.blendShapeCount;
-                    int currentBlendShapeCount = blendShapeWeightsProperty.arraySize;
+                    blendShapeWeightsProperty.arraySize = blendShapeCount;
+                }
 
-                    #region Sync Shapes
-                    // Synchronize blend shape names and create a map
-                    // This is done because for some weird reason the blendshape `m_BlendShapeWeights` can be mismatched in the skinmesh renderer
-                    // this is done to sync the blendshapes from the mesh to the skinmesh renderer, probably terrible way to do this but it works 
-                    
-                    if (blendShapeCount != currentBlendShapeCount)
+                var blendShapeMap = new Dictionary<string, SerializedProperty>();
+                for (int i = 0; i < blendShapeCount; i++)
+                {
+                    string blendShapeName = sharedMesh.GetBlendShapeName(i);
+                    SerializedProperty blendShapeWeightProperty =
+                        blendShapeWeightsProperty.GetArrayElementAtIndex(i);
+                    blendShapeMap[blendShapeName] = blendShapeWeightProperty;
+                }
+
+                #endregion
+
+                serializedRenderer.ApplyModifiedProperties();
+                if (blendShapeCount < 1)
+                {
+                    EditorGUILayout.HelpBox(Styles.NoActiveBlendShapes.text, MessageType.Info);
+                }
+
+                foreach (var blendShapeName in blendShapeMap.Keys.Where(blendShapeName => commonBlendShapes.Contains(blendShapeName) && 
+                             (string.IsNullOrEmpty(_searchQuery) ||
+                              blendShapeName.ToLower().Contains(_searchQuery.ToLower()))))
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    var blendShapeWeightProperty = blendShapeMap[blendShapeName];
+                    if (blendShapeWeightProperty != null)
                     {
-                        blendShapeWeightsProperty.arraySize = blendShapeCount;
-                    }
-
-                    Dictionary<string, SerializedProperty> blendShapeMap = new Dictionary<string, SerializedProperty>();
-                    
-                    for (int i = 0; i < blendShapeCount; i++)
-                    {
-                        string blendShapeName = sharedMesh.GetBlendShapeName(i);
-                        SerializedProperty blendShapeWeightProperty =
-                            blendShapeWeightsProperty.GetArrayElementAtIndex(i);
-                        blendShapeMap[blendShapeName] = blendShapeWeightProperty;
-                    }
-
-                    #endregion
-
-                    serializedRenderer.ApplyModifiedProperties();
-
-                    if (blendShapeCount < 1)
-                    {
-                        EditorGUILayout.HelpBox(Styles.NoActiveBlendShapes.text, MessageType.Info);
-                    }
-
-                    foreach (var blendShapeName in blendShapeMap.Keys)
-                    {
-                        if (commonBlendShapes.Contains(blendShapeName) && (string.IsNullOrEmpty(_searchQuery) ||
-                                                                           blendShapeName.ToLower()
-                                                                               .Contains(_searchQuery.ToLower())))
+                        var content = _defaultEditor.targets.Length < 2
+                            ? new GUIContent(blendShapeName)
+                            : new GUIContent($"{sharedMesh.name}-{blendShapeName}");
+                        EditorGUI.BeginChangeCheck();
+                        if (sliderMethod != null && !PlayerSettings.legacyClampBlendShapeWeights)
                         {
-                            EditorGUILayout.BeginHorizontal();
-                           SerializedProperty blendShapeWeightProperty = blendShapeMap[blendShapeName];
-                           if (blendShapeWeightProperty != null)
-                           {
-                               if (_defaultEditor.targets.Length < 2)
-                               {
-                                   GUIContent content = new GUIContent(blendShapeName);
-    
-                                   EditorGUI.BeginChangeCheck();
+                            sliderMethod.Invoke(null, new object[]{ blendShapeWeightProperty, 0f, 100f, float.MinValue, float.MaxValue, content, null });
+                        }
+                        else
+                        {
+                            EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
+                        }
 
-                                   if (sliderMethod != null && !PlayerSettings.legacyClampBlendShapeWeights)
-                                   {
-                                       object[] parameters = { blendShapeWeightProperty, 0f, 100f, float.MinValue, float.MaxValue, content, null };
-                                       sliderMethod.Invoke(null, parameters);
-                                   }
-                                   else
-                                   {
-                                       EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
-                                   }
-                                   
-                                   if (EditorGUI.EndChangeCheck())
-                                   {
-                                       blendShapeWeightProperty.serializedObject.ApplyModifiedProperties();
-                                   }
-                               }
-                               else
-                               {
-                                   GUIContent content = new GUIContent($"{sharedMesh.name}-{blendShapeName}");
-    
-                                   EditorGUI.BeginChangeCheck();
-                                   
-                                   if (sliderMethod != null && !PlayerSettings.legacyClampBlendShapeWeights)
-                                   {
-                                       object[] parameters = { blendShapeWeightProperty, 0f, 100f, float.MinValue, float.MaxValue, content, null };
-                                       sliderMethod.Invoke(null, parameters);
-                                   }
-                                   else
-                                   {
-                                       EditorGUILayout.Slider(blendShapeWeightProperty, 0f, 100f, content);
-                                   }
-                                   
-                                   if (EditorGUI.EndChangeCheck())
-                                   {
-                                       blendShapeWeightProperty.serializedObject.ApplyModifiedProperties();
-                                   }
-                               }
-                           }
-
-                            EditorGUILayout.EndHorizontal();
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            blendShapeWeightProperty.serializedObject.ApplyModifiedProperties();
                         }
                     }
 
-                    serializedRenderer.ApplyModifiedProperties();
+                    EditorGUILayout.EndHorizontal();
                 }
+                serializedRenderer.ApplyModifiedProperties();
             }
         }
     }

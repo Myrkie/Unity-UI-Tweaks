@@ -10,18 +10,27 @@ namespace MyrkieUiTweaks
     [CanEditMultipleObjects]
     public class TransformUsageCheckerExtension : Editor
     {
-        Editor defaultEditor;
+        Editor _defaultEditor;
         private Transform _transform;
 
         void OnEnable()
         {
-            defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
-            _transform = target as Transform;
+            _defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
+            _transform = _defaultEditor.target as Transform;
+        }
+        
+        private void OnDisable()
+        {
+            // disposing of this to make sure it doesnt cause any leaks
+            if (_defaultEditor != null)
+            {
+                DestroyImmediate(_defaultEditor);
+            }
         }
 
         public override void OnInspectorGUI()
         {
-            defaultEditor.OnInspectorGUI();
+            _defaultEditor.OnInspectorGUI();
 
             if (!UserChoicePatcherUI.ConstraintTransformEditor) return;
             if (_transform == null) return;

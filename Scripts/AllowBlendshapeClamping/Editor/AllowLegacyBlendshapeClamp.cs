@@ -11,12 +11,10 @@ namespace MyrkieUiTweaks
     [InitializeOnLoad]
     public class AllowLegacyBlendshapeClamp : Editor
     {
-        private static Harmony _harmonyInstance;
-
         static AllowLegacyBlendshapeClamp()
         {
             if (!UserChoicePatcherUI.AllowBlendshapeClamping) return;
-            var _harmonyInstance = new Harmony("AllowLegacyBlendshapeClamp");
+            var harmonyInstance = new Harmony("AllowLegacyBlendshapeClamp");
             try
             {
                 if (UserChoicePatcherUI.DebugLogging)
@@ -25,7 +23,7 @@ namespace MyrkieUiTweaks
                 }
 
                 var method1 = typeof(EnvConfig).GetMethod("SetPlayerSettings", BindingFlags.NonPublic | BindingFlags.Static);
-                _harmonyInstance.Patch(method1,
+                harmonyInstance.Patch(method1,
                     postfix: new HarmonyMethod(typeof(AllowLegacyBlendshapeClamp), nameof(PostfixShapekeys)));
                 if (UserChoicePatcherUI.DebugLogging)
                 {
