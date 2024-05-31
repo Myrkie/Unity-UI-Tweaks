@@ -28,11 +28,6 @@ namespace MyrkieUiTweaks
 
             public static readonly GUIContent NoActiveBlendShapes =
                 EditorGUIUtility.TrTextContent("No BlendShapes exist on this Mesh.");
-            
-            public static readonly GUIStyle YellowTextStyle = new(EditorStyles.label)
-            {
-                normal = { textColor = Color.yellow }
-            };
         }
 
         static BlendshapeSearch()
@@ -92,13 +87,13 @@ namespace MyrkieUiTweaks
             // https://github.com/Unity-Technologies/UnityCsReference/blob/6c8a95ff127619e73519662fa497e242b898f9af/Editor/Mono/Inspector/SkinnedMeshRendererEditor.cs#L170
             if (!_defaultEditor.target)
                 return;
-            SkinnedMeshRenderer renderer = (SkinnedMeshRenderer)_defaultEditor.target;
+            var renderer = (SkinnedMeshRenderer)_defaultEditor.target;
 
             if (renderer.updateWhenOffscreen)
             {
-                Bounds bounds = renderer.bounds;
-                Vector3 center = bounds.center;
-                Vector3 size = bounds.size;
+                var bounds = renderer.bounds;
+                var center = bounds.center;
+                var size = bounds.size;
 
                 Handles.DrawWireCube(center, size);
             }
@@ -146,30 +141,28 @@ namespace MyrkieUiTweaks
         public static void PostfixMethod()
         {
             // Collect common blend shapes among all selected objects
-            HashSet<string> commonBlendShapes = new HashSet<string>();
-            bool firstObject = true;
+            var commonBlendShapes = new HashSet<string>();
+            var firstObject = true;
             foreach (var target in _defaultEditor.targets)
             {
-                SkinnedMeshRenderer renderer = target as SkinnedMeshRenderer;
-                if (renderer != null)
+                var renderer = target as SkinnedMeshRenderer;
+                if (renderer == null) continue;
+                var sharedMesh = renderer.sharedMesh;
+                if (sharedMesh == null) continue;
+                var blendShapes = new List<string>();
+                for (int i = 0; i < sharedMesh.blendShapeCount; i++)
                 {
-                    Mesh sharedMesh = renderer.sharedMesh;
-                    if (sharedMesh == null) continue;
-                    List<string> blendShapes = new List<string>();
-                    for (int i = 0; i < sharedMesh.blendShapeCount; i++)
-                    {
-                        blendShapes.Add(sharedMesh.GetBlendShapeName(i));
-                    }
+                    blendShapes.Add(sharedMesh.GetBlendShapeName(i));
+                }
 
-                    if (firstObject)
-                    {
-                        commonBlendShapes.UnionWith(blendShapes);
-                        firstObject = false;
-                    }
-                    else
-                    {
-                        commonBlendShapes.IntersectWith(blendShapes);
-                    }
+                if (firstObject)
+                {
+                    commonBlendShapes.UnionWith(blendShapes);
+                    firstObject = false;
+                }
+                else
+                {
+                    commonBlendShapes.IntersectWith(blendShapes);
                 }
             }
 
@@ -190,7 +183,7 @@ namespace MyrkieUiTweaks
             SearchAndDrawBlendShapes(commonBlendShapes);
         }
 
-        private static void SearchAndDrawBlendShapes(HashSet<string> commonBlendShapes)
+        private static void SearchAndDrawBlendShapes(ICollection<string> commonBlendShapes)
         {
             foreach (var target in _defaultEditor.targets)
             {
@@ -217,7 +210,7 @@ namespace MyrkieUiTweaks
                 for (int i = 0; i < blendShapeCount; i++)
                 {
                     string blendShapeName = sharedMesh.GetBlendShapeName(i);
-                    SerializedProperty blendShapeWeightProperty =
+                    var blendShapeWeightProperty =
                         blendShapeWeightsProperty.GetArrayElementAtIndex(i);
                     blendShapeMap[blendShapeName] = blendShapeWeightProperty;
                 }
@@ -228,6 +221,7 @@ namespace MyrkieUiTweaks
                 if (blendShapeCount < 1)
                 {
                     EditorGUILayout.HelpBox(Styles.NoActiveBlendShapes.text, MessageType.Info);
+                    return;
                 }
 
                 foreach (var blendShapeName in blendShapeMap.Keys.Where(blendShapeName => commonBlendShapes.Contains(blendShapeName) && 
@@ -235,12 +229,15 @@ namespace MyrkieUiTweaks
                               blendShapeName.ToLower().Contains(_searchQuery.ToLower()))))
                 {
                     EditorGUILayout.BeginHorizontal();
+                    
                     var blendShapeWeightProperty = blendShapeMap[blendShapeName];
                     if (blendShapeWeightProperty != null)
                     {
                         var content = _defaultEditor.targets.Length < 2
                             ? new GUIContent(blendShapeName)
                             : new GUIContent($"{sharedMesh.name}-{blendShapeName}");
+                        
+                        
                         EditorGUI.BeginChangeCheck();
                         if (sliderMethod != null && !PlayerSettings.legacyClampBlendShapeWeights)
                         {
