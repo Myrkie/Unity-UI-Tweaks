@@ -10,6 +10,7 @@ namespace MyrkieUiTweaks
         public static bool AllowBlendshapeClamping = true;
         public static bool DebugLogging = true;
         public static bool DisableMouseJumping = true;
+        public static bool EnableSortingLayers;
 
         [MenuItem("Tools/Myrkur/UserChoicePatcherUI Patch Settings")]
         public static void ShowWindow()
@@ -60,6 +61,14 @@ namespace MyrkieUiTweaks
             {
                 EditorPrefs.SetBool("UserChoicePatcher_DisableMouseJumping", DisableMouseJumping);
             }
+            
+            EditorGUI.BeginChangeCheck();
+            EnableSortingLayers = EditorGUILayout.Toggle("EnableSortingLayers in Blendshape UI", EnableSortingLayers);
+            if (EditorGUI.EndChangeCheck())
+            {
+                EditorPrefs.SetBool("UserChoicePatcher_EnableSortingLayers", EnableSortingLayers);
+            }
+            
 
             GUILayout.TextArea(
                 "Changing any of these settings will require a restart of the project or reimport of the package.");
@@ -79,6 +88,7 @@ namespace MyrkieUiTweaks
             AllowBlendshapeClamping = EditorPrefs.GetBool("UserChoicePatcher_AllowBlendshapeClamping", true);
 #endif
             DisableMouseJumping = EditorPrefs.GetBool("UserChoicePatcher_DisableMouseJumping", true);
+            EnableSortingLayers = EditorPrefs.GetBool("UserChoicePatcher_EnableSortingLayers", false);
         }
     }
 }

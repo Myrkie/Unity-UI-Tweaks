@@ -19,6 +19,9 @@ namespace MyrkieUiTweaks
         private static MethodInfo sliderMethod;
         private readonly BoxBoundsHandle _BoundsHandle = new();
         
+        private SerializedProperty sortingLayerID;
+        private SerializedProperty sortingOrder;
+        
         class Styles
         {
             public static readonly GUIContent LegacyClampBlendShapeWeightsInfo =
@@ -77,8 +80,64 @@ namespace MyrkieUiTweaks
             {
                 _defaultEditor.OnInspectorGUI();
             }
+
+            if (UserChoicePatcherUI.EnableSortingLayers)
+            {
+                SortingLayers();
+            }
+        }
+        
+        private void SortingLayers()
+        {
+            GUIStyle style = new GUIStyle (GUI.skin.label);
+            style.richText = true;
+            EditorGUILayout.Space ();
+            DrawHorizontalGUILine();
+            #region SortingLayer
+            Rect firstHoriz = EditorGUILayout.BeginHorizontal ();
+            EditorGUI.BeginChangeCheck ();
+            EditorGUI.BeginProperty (firstHoriz, GUIContent.none, sortingLayerID);
+            string[] layerNames = GetSortingLayerNames ();
+            int[] layerID = GetSortingLayerUniqueIDs ();
+            int selected = -1;
+            int sID = sortingLayerID.intValue;
+            for (int i = 0; i < layerID.Length; i++)
+                if (sID == layerID [i])
+                    selected = i;
+            if (selected == -1)
+                for (int i = 0; i < layerID.Length; i++)
+                    if (layerID [i] == 0)
+                        selected = i;
+            selected = EditorGUILayout.Popup ("Sorting Layer", selected, layerNames);
+
+            sortingLayerID.intValue = layerID [selected];
+            EditorGUI.EndProperty ();
+            EditorGUILayout.EndHorizontal ();
+            #endregion
+
+            #region OrderInLayer
+            EditorGUILayout.BeginHorizontal ();
+            EditorGUI.BeginChangeCheck ();
+            EditorGUILayout.PropertyField (sortingOrder, new GUIContent ("Order in Layer"));
+            EditorGUILayout.EndHorizontal ();
+            serializedObject.ApplyModifiedProperties ();
+            #endregion
         }
 
+        private string[] GetSortingLayerNames ()
+        {
+            Type internalEditorUtilityType = typeof(InternalEditorUtility);
+            PropertyInfo sortingLayersProperty = internalEditorUtilityType.GetProperty ("sortingLayerNames", BindingFlags.Static | BindingFlags.NonPublic);
+            return (string[])sortingLayersProperty.GetValue (null, new object[0]);
+        }
+
+        private int[] GetSortingLayerUniqueIDs ()
+        {
+            Type internalEditorUtilityType = typeof(InternalEditorUtility);
+            PropertyInfo sortingLayerUniqueIDsProperty = internalEditorUtilityType.GetProperty ("sortingLayerUniqueIDs", BindingFlags.Static | BindingFlags.NonPublic);
+            return (int[])sortingLayerUniqueIDsProperty.GetValue (null, new object[0]);
+        }
+        
         public void OnSceneGUI()
         {
             // was unable to figure out how to reflect this code, and its not overridable.
@@ -120,6 +179,13 @@ namespace MyrkieUiTweaks
         void OnEnable()
         {
             _defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.SkinnedMeshRendererEditor, UnityEditor"));
+            if (UserChoicePatcherUI.EnableSortingLayers)
+            {
+                #region Get Serialized Property
+                sortingLayerID = serializedObject.FindProperty("m_SortingLayerID");
+                sortingOrder = serializedObject.FindProperty("m_SortingOrder");
+                #endregion
+            }
             _BoundsHandle.SetColor(new Color(255, 255, 255, 150) / 255);
         }
 
@@ -257,6 +323,21 @@ namespace MyrkieUiTweaks
                 }
                 serializedRenderer.ApplyModifiedProperties();
             }
+        }
+        
+        // https://forum.unity.com/threads/horizontal-line-in-editor-window.520812/#post-8551211
+        private static void DrawHorizontalGUILine(int height = 1)
+        {
+            GUILayout.Space(4);
+
+            Rect rect = GUILayoutUtility.GetRect(10, height, GUILayout.ExpandWidth(true));
+            rect.height = height;
+            rect.xMin = 0;
+            rect.xMax = EditorGUIUtility.currentViewWidth;
+
+            Color lineColor = new Color(0.10196f, 0.10196f, 0.10196f, 1);
+            EditorGUI.DrawRect(rect, lineColor);
+            GUILayout.Space(4);
         }
     }
 }
