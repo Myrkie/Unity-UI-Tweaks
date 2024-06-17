@@ -10,8 +10,7 @@ using UnityEditorInternal;
 
 namespace MyrkieUiTweaks
 {
-    [CustomEditor(typeof(SkinnedMeshRenderer), true)]
-    [CanEditMultipleObjects]
+    [CustomEditor(typeof(SkinnedMeshRenderer), true)] 
     public class BlendshapeSearch : Editor
     {
         private static string _searchQuery;
