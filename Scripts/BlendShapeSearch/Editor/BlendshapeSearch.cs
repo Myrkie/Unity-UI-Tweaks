@@ -10,7 +10,8 @@ using UnityEditorInternal;
 
 namespace MyrkieUiTweaks
 {
-    [CustomEditor(typeof(SkinnedMeshRenderer), true)] 
+    [CustomEditor(typeof(SkinnedMeshRenderer), true)]
+    [CanEditMultipleObjects]
     public class BlendshapeSearch : Editor
     {
         private static string _searchQuery;
@@ -37,12 +38,18 @@ namespace MyrkieUiTweaks
             var harmonyInstance = new Harmony("BlendshapeSearch");
             try
             {
-                var method = typeof(Editor).Assembly.GetType("UnityEditor.SkinnedMeshRendererEditor").GetMethod(
-                    "OnBlendShapeUI",
+                var editorBlendShapeUI = typeof(Editor).Assembly.GetType("UnityEditor.SkinnedMeshRendererEditor").GetMethod("OnBlendShapeUI", 
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-                harmonyInstance.Patch(method,
+                
+                var editorOnSceneGUI = typeof(Editor).Assembly.GetType("UnityEditor.SkinnedMeshRendererEditor").GetMethod("OnSceneGUI", 
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                
+                harmonyInstance.Patch(editorBlendShapeUI,
                     prefix: new HarmonyMethod(typeof(BlendshapeSearch).GetMethod(nameof(PrefixMethod))),
                     postfix: new HarmonyMethod(typeof(BlendshapeSearch).GetMethod(nameof(PostfixMethod))));
+
+                harmonyInstance.Patch(editorOnSceneGUI,
+                    prefix: new HarmonyMethod(typeof(BlendshapeSearch).GetMethod(nameof(PrefixMethod))));
             }
             catch (Exception ex)
             {
@@ -140,19 +147,23 @@ namespace MyrkieUiTweaks
         
         public void OnSceneGUI()
         {
-            // was unable to figure out how to reflect this code, and its not overridable.
+            // was unable to figure out how to reflect this code, and it's not overridable.
             // so I had to copy most of it from unity CS reference and modify
             // https://github.com/Unity-Technologies/UnityCsReference/blob/6c8a95ff127619e73519662fa497e242b898f9af/Editor/Mono/Inspector/SkinnedMeshRendererEditor.cs#L170
             if (!_defaultEditor.target)
                 return;
-            var renderer = (SkinnedMeshRenderer)_defaultEditor.target;
 
+            var editModeCondition = EditMode.editMode == EditMode.SceneViewEditMode.Collider && EditMode.IsOwner(_defaultEditor);
+
+            if (target is not SkinnedMeshRenderer renderer) return;
+                
             if (renderer.updateWhenOffscreen)
             {
                 var bounds = renderer.bounds;
                 var center = bounds.center;
                 var size = bounds.size;
 
+                Handles.color = editModeCondition ? Color.yellow : Color.white;
                 Handles.DrawWireCube(center, size);
             }
             else
@@ -162,10 +173,9 @@ namespace MyrkieUiTweaks
                     Bounds bounds = renderer.localBounds;
                     _BoundsHandle.center = bounds.center;
                     _BoundsHandle.size = bounds.size;
-                    
-                    _BoundsHandle.handleColor = EditMode.editMode == EditMode.SceneViewEditMode.Collider && EditMode.IsOwner(_defaultEditor) ?
-                        _BoundsHandle.wireframeColor : Color.clear;
-                    
+
+                    _BoundsHandle.handleColor = editModeCondition ? Color.yellow : Color.clear;
+                    _BoundsHandle.wireframeColor = editModeCondition ? Color.yellow : Color.white;
 
                     EditorGUI.BeginChangeCheck();
                     _BoundsHandle.DrawHandle();
@@ -191,7 +201,7 @@ namespace MyrkieUiTweaks
 
         private void OnDisable()
         {
-            // disposing of this to make sure it doesnt cause any leaks
+            // disposing of this to make sure it doesn't cause any leaks
             if (_defaultEditor != null)
             {
                 DestroyImmediate(_defaultEditor);
@@ -264,8 +274,8 @@ namespace MyrkieUiTweaks
 
                 #region Sync Shapes
                 // Synchronize blend shape names and create a map
-                // This is done because for some weird reason the blendshape `m_BlendShapeWeights` can be mismatched in the skinmesh renderer
-                // this is done to sync the blendshapes from the mesh to the skinmesh renderer, probably terrible way to do this but it works 
+                // This is done because for some weird reason the blend shape `m_BlendShapeWeights` can be mismatched in the skin mesh renderer
+                // this is done to sync the blend shapes from the mesh to the skin mesh renderer, probably terrible way to do this, but it works 
                 if (blendShapeCount != currentBlendShapeCount)
                 {
                     blendShapeWeightsProperty.arraySize = blendShapeCount;
