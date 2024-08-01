@@ -3,6 +3,9 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.Animations;
 using System.Collections.Generic;
+#if VRC_SDK_VRCSDK3
+using VRC.Dynamics;
+#endif
 
 namespace MyrkieUiTweaks
 {
@@ -15,13 +18,12 @@ namespace MyrkieUiTweaks
 
         void OnEnable()
         {
-            _defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
-            _transform = _defaultEditor.target as Transform;
+            InitializeEditor();
         }
-        
+
         private void OnDisable()
         {
-            // disposing of this to make sure it doesnt cause any leaks
+            // disposing of this to make sure it doesn't cause any leaks
             if (_defaultEditor != null)
             {
                 DestroyImmediate(_defaultEditor);
@@ -33,36 +35,183 @@ namespace MyrkieUiTweaks
             _defaultEditor.OnInspectorGUI();
 
             if (!UserChoicePatcherUI.ConstraintTransformEditor) return;
-            if (_transform == null) return;
-            DrawHorizontalGUILine();
-            CheckConstraintUsage(_transform);
+            if (_transform is null) return;
+
+            bool hasConstraints = CheckNativeConstraints();
+#if VRC_SDK_VRCSDK3
+            bool hasVrcConstraints = CheckVrcConstraints();
+            if (!hasConstraints && hasVrcConstraints)
+            {
+                DrawHorizontalGUILine();
+            }
+#endif
         }
 
-        private void CheckConstraintUsage(Transform targetTransform)
+        private void InitializeEditor()
         {
+            _defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
+            _transform = _defaultEditor.target as Transform;
+        }
+        private bool CheckNativeConstraints()
+        {
+            bool foundConstraint = false;
             GameObject[] allGameObjects = Resources.FindObjectsOfTypeAll<GameObject>();
 
             foreach (GameObject obj in allGameObjects)
             {
-                if (!obj.scene.IsValid())
-                    continue;
+                if (!obj.scene.IsValid()) continue;
 
                 IConstraint[] constraints = obj.GetComponents<IConstraint>();
-
                 foreach (IConstraint constraint in constraints)
                 {
-                    if (IsTransformUsedAsSource(constraint, targetTransform))
+                    if (!IsNativeConstraintTransformUsedAsSource(constraint, _transform)) continue;
+
+                    if (!foundConstraint)
                     {
-                        if (GUILayout.Button("Uses: " + obj.name + " | " + constraint.GetType().Name))
-                        {
-                            EditorGUIUtility.PingObject(obj);
-                        }
+                        DrawHorizontalGUILine();
+                        foundConstraint = true;
                     }
+
+                    DrawConstraintButton(obj, constraint as Component);
                 }
+            }
+
+            return foundConstraint;
+        }
+
+#if VRC_SDK_VRCSDK3
+        private bool CheckVrcConstraints()
+        {
+            bool foundConstraint = false;
+            GameObject[] allGameObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+
+            foreach (GameObject obj in allGameObjects)
+            {
+                if (!obj.scene.IsValid()) continue;
+
+                VRCConstraintBase[] constraints = obj.GetComponents<VRCConstraintBase>();
+                foreach (VRCConstraintBase constraint in constraints)
+                {
+                    if (!IsVRCConstraintTransformUsedAsSource(constraint, _transform)) continue;
+
+                    if (!foundConstraint)
+                    {
+                        DrawHorizontalGUILine();
+                        foundConstraint = true;
+                    }
+
+                    DrawConstraintButton(obj, constraint);
+                }
+            }
+
+            return foundConstraint;
+        }
+#endif
+        private void DrawConstraintButton(GameObject obj, Component constraint)
+        {
+            float availableWidth = EditorGUIUtility.currentViewWidth;
+            float minWidthForHorizontal = 400; 
+
+            if (availableWidth > minWidthForHorizontal)
+            {
+                DrawHorizontalLayout(obj, constraint);
+            }
+            else
+            {
+                DrawVerticalLayout(obj, constraint);
             }
         }
 
-        // https://forum.unity.com/threads/horizontal-line-in-editor-window.520812/#post-8551211
+        private void DrawHorizontalLayout(GameObject obj, Component constraint)
+        {
+            EditorGUILayout.BeginHorizontal();
+
+            Texture icon = GetComponentIconOrReturnDefault(constraint.GetType());
+            GUILayout.Label(new GUIContent(icon), GUILayout.Width(20), GUILayout.Height(20));
+
+            string objectName = obj.name;
+            GUILayout.Label(objectName, EditorStyles.label, GUILayout.Width(GetLabelWidth(objectName)));
+
+            GUILayout.Box(GUIContent.none, GUILayout.Width(2), GUILayout.ExpandHeight(true));
+
+            GUILayout.Label(constraint.GetType().Name, GUILayout.Width(130));
+
+            GUILayout.FlexibleSpace();
+
+            DrawButtons(obj);
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+
+        private Dictionary<string, bool> foldoutStates = new();
+
+        private void DrawVerticalLayout(GameObject obj, Component constraint)
+        {
+            string uniqueKey = GetUniqueKey(obj, constraint);
+
+            EditorGUILayout.BeginHorizontal();
+
+            Texture icon = GetComponentIconOrReturnDefault(constraint.GetType());
+            GUILayout.Label(new GUIContent(icon), GUILayout.Width(20), GUILayout.Height(20));
+            GUILayout.Space(20);
+
+            GUILayout.BeginVertical();
+
+            foldoutStates.TryAdd(uniqueKey, true);
+            
+            foldoutStates[uniqueKey] = EditorGUILayout.Foldout(foldoutStates[uniqueKey], $"{obj.name} - {constraint.GetType().Name}", true);
+
+            if (foldoutStates[uniqueKey])
+            {
+                EditorGUI.indentLevel++;
+
+                EditorGUILayout.BeginVertical();
+
+                EditorGUILayout.BeginHorizontal();
+
+                GUILayout.Label(constraint.GetType().Name, GUILayout.Width(130));
+        
+                DrawButtons(obj);
+
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.EndVertical();
+
+                EditorGUI.indentLevel--;
+            }
+
+            GUILayout.EndVertical();
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private string GetUniqueKey(GameObject obj, Component constraint)
+        {
+            return $"{obj.GetInstanceID()}_{constraint.GetType().FullName}";
+        }
+
+
+        private float GetLabelWidth(string objectName)
+        {
+            GUIStyle labelStyle = EditorStyles.label;
+            float textWidth = labelStyle.CalcSize(new GUIContent(objectName)).x;
+            float maxWidth = 200f;
+            return Mathf.Min(textWidth, maxWidth);
+        }
+
+        private void DrawButtons(GameObject obj)
+        {
+            if (GUILayout.Button("Ping", GUILayout.Width(50)))
+            {
+                EditorGUIUtility.PingObject(obj);
+            }
+
+            if (GUILayout.Button("Select", GUILayout.Width(50)))
+            {
+                Selection.activeGameObject = obj;
+            }
+        }
+        // https://discussions.unity.com/t/horizontal-line-in-editor-window/694105/12
         private static void DrawHorizontalGUILine(int height = 1)
         {
             GUILayout.Space(4);
@@ -76,9 +225,7 @@ namespace MyrkieUiTweaks
             EditorGUI.DrawRect(rect, lineColor);
             GUILayout.Space(4);
         }
-
-
-        private static bool IsTransformUsedAsSource(IConstraint constraint, Transform targetTransform)
+        private static bool IsNativeConstraintTransformUsedAsSource(IConstraint constraint, Transform targetTransform)
         {
             List<ConstraintSource> sources = new List<ConstraintSource>();
             constraint.GetSources(sources);
@@ -92,6 +239,27 @@ namespace MyrkieUiTweaks
             }
 
             return false;
+        }
+
+#if VRC_SDK_VRCSDK3
+        private static bool IsVRCConstraintTransformUsedAsSource(VRCConstraintBase constraint, Transform targetTransform)
+        {
+            VRCConstraintSourceKeyableList sources = constraint.Sources;
+
+            foreach (VRCConstraintSource source in sources)
+            {
+                if (source.SourceTransform == targetTransform)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+#endif
+        private static Texture GetComponentIconOrReturnDefault(Type type)
+        {
+            GUIContent content = EditorGUIUtility.ObjectContent(null, type);
+            return content.image ?? (content.image = EditorGUIUtility.FindTexture("cs Script Icon"));
         }
     }
 }
