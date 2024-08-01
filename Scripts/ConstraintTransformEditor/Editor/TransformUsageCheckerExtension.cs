@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.Animations;
 using System.Collections.Generic;
+using System.Linq;
 #if VRC_SDK_VRCSDK3
 using VRC.Dynamics;
 #endif
@@ -13,9 +14,10 @@ namespace MyrkieUiTweaks
     [CanEditMultipleObjects]
     public class TransformUsageCheckerExtension : Editor
     {
-        Editor _defaultEditor;
+        private Editor _defaultEditor;
         private Transform _transform;
         private readonly Dictionary<string, bool> _foldoutStates = new();
+        private bool _collapseAll;
 
         #region unity event functions
 
@@ -27,7 +29,7 @@ namespace MyrkieUiTweaks
 
         private void OnDisable()
         {
-            // disposing of this to make sure it doesn't cause any leaks
+            // Disposing of this to make sure it doesn't cause any leaks
             if (_defaultEditor != null)
             {
                 DestroyImmediate(_defaultEditor);
@@ -40,6 +42,17 @@ namespace MyrkieUiTweaks
 
             if (!UserChoicePatcherUI.ConstraintTransformEditor) return;
             if (_transform is null) return;
+            
+            var hasFoldoutStates = _foldoutStates.Count > 0;
+            if (hasFoldoutStates)
+            {
+                if (GUILayout.Button(_collapseAll ? "Expand All" : "Collapse All"))
+                {
+                    _collapseAll = !_collapseAll;
+                    UpdateAllFoldoutStates();
+                    Repaint();
+                }
+            }
 
             bool hasConstraints = CheckNativeConstraints();
 #if VRC_SDK_VRCSDK3
@@ -160,9 +173,14 @@ namespace MyrkieUiTweaks
 
             GUILayout.BeginVertical();
 
-            _foldoutStates.TryAdd(uniqueKey, true);
-            
-            _foldoutStates[uniqueKey] = EditorGUILayout.Foldout(_foldoutStates[uniqueKey], $"{obj.name} - {constraint.GetType().Name}", true);
+            if (!_foldoutStates.ContainsKey(uniqueKey))
+            {
+                _foldoutStates[uniqueKey] = !_collapseAll;
+            }
+
+            bool foldoutState = EditorGUILayout.Foldout(_foldoutStates[uniqueKey], $"{obj.name} - {constraint.GetType().Name}", true);
+
+            _foldoutStates[uniqueKey] = foldoutState;
 
             if (_foldoutStates[uniqueKey])
             {
@@ -197,6 +215,14 @@ namespace MyrkieUiTweaks
             if (GUILayout.Button("Select", GUILayout.Width(50)))
             {
                 Selection.activeGameObject = obj;
+            }
+        }
+        
+        private void UpdateAllFoldoutStates()
+        {
+            foreach (var key in _foldoutStates.Keys.ToList())
+            {
+                _foldoutStates[key] = !_collapseAll;
             }
         }
         
