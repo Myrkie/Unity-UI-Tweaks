@@ -15,10 +15,14 @@ namespace MyrkieUiTweaks
     {
         Editor _defaultEditor;
         private Transform _transform;
+        private readonly Dictionary<string, bool> _foldoutStates = new();
+
+        #region unity event functions
 
         void OnEnable()
         {
-            InitializeEditor();
+            _defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
+            _transform = _defaultEditor.target as Transform;
         }
 
         private void OnDisable()
@@ -46,12 +50,9 @@ namespace MyrkieUiTweaks
             }
 #endif
         }
+        #endregion
 
-        private void InitializeEditor()
-        {
-            _defaultEditor = CreateEditor(targets, Type.GetType("UnityEditor.TransformInspector, UnityEditor"));
-            _transform = _defaultEditor.target as Transform;
-        }
+        #region check native constraints
         private bool CheckNativeConstraints()
         {
             bool foundConstraint = false;
@@ -78,6 +79,7 @@ namespace MyrkieUiTweaks
 
             return foundConstraint;
         }
+        #endregion
 
 #if VRC_SDK_VRCSDK3
         private bool CheckVrcConstraints()
@@ -107,6 +109,9 @@ namespace MyrkieUiTweaks
             return foundConstraint;
         }
 #endif
+
+        #region draw main ui
+        
         private void DrawConstraintButton(GameObject obj, Component constraint)
         {
             float availableWidth = EditorGUIUtility.currentViewWidth;
@@ -143,9 +148,6 @@ namespace MyrkieUiTweaks
             EditorGUILayout.EndHorizontal();
         }
 
-
-        private Dictionary<string, bool> foldoutStates = new();
-
         private void DrawVerticalLayout(GameObject obj, Component constraint)
         {
             string uniqueKey = GetUniqueKey(obj, constraint);
@@ -158,11 +160,11 @@ namespace MyrkieUiTweaks
 
             GUILayout.BeginVertical();
 
-            foldoutStates.TryAdd(uniqueKey, true);
+            _foldoutStates.TryAdd(uniqueKey, true);
             
-            foldoutStates[uniqueKey] = EditorGUILayout.Foldout(foldoutStates[uniqueKey], $"{obj.name} - {constraint.GetType().Name}", true);
+            _foldoutStates[uniqueKey] = EditorGUILayout.Foldout(_foldoutStates[uniqueKey], $"{obj.name} - {constraint.GetType().Name}", true);
 
-            if (foldoutStates[uniqueKey])
+            if (_foldoutStates[uniqueKey])
             {
                 EditorGUI.indentLevel++;
 
@@ -184,21 +186,7 @@ namespace MyrkieUiTweaks
             GUILayout.EndVertical();
             EditorGUILayout.EndHorizontal();
         }
-
-        private string GetUniqueKey(GameObject obj, Component constraint)
-        {
-            return $"{obj.GetInstanceID()}_{constraint.GetType().FullName}";
-        }
-
-
-        private float GetLabelWidth(string objectName)
-        {
-            GUIStyle labelStyle = EditorStyles.label;
-            float textWidth = labelStyle.CalcSize(new GUIContent(objectName)).x;
-            float maxWidth = 200f;
-            return Mathf.Min(textWidth, maxWidth);
-        }
-
+        
         private void DrawButtons(GameObject obj)
         {
             if (GUILayout.Button("Ping", GUILayout.Width(50)))
@@ -210,6 +198,29 @@ namespace MyrkieUiTweaks
             {
                 Selection.activeGameObject = obj;
             }
+        }
+        
+        #endregion
+
+        #region UI helpers
+
+        private static Texture GetComponentIconOrReturnDefault(Type type)
+        {
+            GUIContent content = EditorGUIUtility.ObjectContent(null, type);
+            return content.image ?? (content.image = EditorGUIUtility.FindTexture("cs Script Icon"));
+        }
+        
+        private string GetUniqueKey(GameObject obj, Component constraint)
+        {
+            return $"{obj.GetInstanceID()}_{constraint.GetType().FullName}";
+        }
+
+        private float GetLabelWidth(string objectName)
+        {
+            GUIStyle labelStyle = EditorStyles.label;
+            float textWidth = labelStyle.CalcSize(new GUIContent(objectName)).x;
+            float maxWidth = 200f;
+            return Mathf.Min(textWidth, maxWidth);
         }
         // https://discussions.unity.com/t/horizontal-line-in-editor-window/694105/12
         private static void DrawHorizontalGUILine(int height = 1)
@@ -225,6 +236,9 @@ namespace MyrkieUiTweaks
             EditorGUI.DrawRect(rect, lineColor);
             GUILayout.Space(4);
         }
+        #endregion
+
+        #region transforms used as source
         private static bool IsNativeConstraintTransformUsedAsSource(IConstraint constraint, Transform targetTransform)
         {
             List<ConstraintSource> sources = new List<ConstraintSource>();
@@ -240,7 +254,6 @@ namespace MyrkieUiTweaks
 
             return false;
         }
-
 #if VRC_SDK_VRCSDK3
         private static bool IsVRCConstraintTransformUsedAsSource(VRCConstraintBase constraint, Transform targetTransform)
         {
@@ -256,10 +269,6 @@ namespace MyrkieUiTweaks
             return false;
         }
 #endif
-        private static Texture GetComponentIconOrReturnDefault(Type type)
-        {
-            GUIContent content = EditorGUIUtility.ObjectContent(null, type);
-            return content.image ?? (content.image = EditorGUIUtility.FindTexture("cs Script Icon"));
-        }
+        #endregion
     }
 }
