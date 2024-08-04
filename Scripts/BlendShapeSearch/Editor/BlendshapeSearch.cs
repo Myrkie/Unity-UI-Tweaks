@@ -25,25 +25,30 @@ namespace MyrkieUiTweaks
         
         class Styles
         {
-            public static readonly GUIContent LegacyClampBlendShapeWeightsInfo =
-                EditorGUIUtility.TrTextContent(
-                    "Note that BlendShape weight range is clamped. This can be disabled in Player Settings.");
-
-            public static readonly GUIContent NoActiveBlendShapes =
-                EditorGUIUtility.TrTextContent("No BlendShapes exist on this Mesh.");
+            public static GUIContent legacyClampBlendShapeWeightsInfo;
+            public static GUIContent meshNotSupportingSkinningInfo;
+            public static GUIContent bounds;
+            public static GUIContent quality;
+            public static GUIContent updateWhenOffscreen;
+            public static GUIContent mesh;
+            public static GUIContent rootBone;
+            public static readonly GUIContent noactiveblendshapes = EditorGUIUtility.TrTextContent("No BlendShapes exist on this Mesh.");
         }
 
         static BlendshapeSearch()
         {
+            #region Harmony patching
+            
             var harmonyInstance = new Harmony("BlendshapeSearch");
+            
             try
             {
-                var editorBlendShapeUI = typeof(Editor).Assembly.GetType("UnityEditor.SkinnedMeshRendererEditor").GetMethod("OnBlendShapeUI", 
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                var bindings = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+                var editorBlendShapeUI = typeof(Editor).Assembly.GetType("UnityEditor.SkinnedMeshRendererEditor").GetMethod("OnBlendShapeUI", bindings);
                 
-                var editorOnSceneGUI = typeof(Editor).Assembly.GetType("UnityEditor.SkinnedMeshRendererEditor").GetMethod("OnSceneGUI", 
-                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                var editorOnSceneGUI = typeof(Editor).Assembly.GetType("UnityEditor.SkinnedMeshRendererEditor").GetMethod("OnSceneGUI", bindings);
                 
+                // reflect code inside OnInspectorGUI
                 harmonyInstance.Patch(editorBlendShapeUI,
                     prefix: new HarmonyMethod(typeof(BlendshapeSearch).GetMethod(nameof(PrefixMethod))),
                     postfix: new HarmonyMethod(typeof(BlendshapeSearch).GetMethod(nameof(PostfixMethod))));
@@ -58,29 +63,14 @@ namespace MyrkieUiTweaks
                     Debug.LogError($"Failed to patch OnBlendShapeUI method: {ex}");
                 }
             }
-            SliderPatch();
+            
+            #endregion
+            ReflectSlider();
+            ReflectStyles();
         }
-
-        private static void SliderPatch()
-        {
-            var sliderMethods = typeof(EditorGUILayout).GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-                .Where(method => method.Name == "Slider")
-                .ToArray();
-
-            sliderMethod = sliderMethods.FirstOrDefault(method =>
-            {
-                ParameterInfo[] parameters = method.GetParameters();
-                return parameters.Length == 7 &&
-                       parameters[0].ParameterType == typeof(SerializedProperty) &&
-                       parameters[1].ParameterType == typeof(float) &&
-                       parameters[2].ParameterType == typeof(float) &&
-                       parameters[3].ParameterType == typeof(float) &&
-                       parameters[4].ParameterType == typeof(float) &&
-                       parameters[5].ParameterType == typeof(GUIContent) &&
-                       parameters[6].ParameterType == typeof(GUILayoutOption[]);
-            });
-        }
-
+        
+        #region Unity event functions
+        
         public override void OnInspectorGUI()
         {
             if (_defaultEditor != null)
@@ -93,58 +83,6 @@ namespace MyrkieUiTweaks
                 SortingLayers();
             }
         }
-        
-        private void SortingLayers()
-        {
-            GUIStyle style = new GUIStyle (GUI.skin.label);
-            style.richText = true;
-            EditorGUILayout.Space ();
-            DrawHorizontalGUILine();
-            #region SortingLayer
-            Rect firstHoriz = EditorGUILayout.BeginHorizontal ();
-            EditorGUI.BeginChangeCheck ();
-            EditorGUI.BeginProperty (firstHoriz, GUIContent.none, sortingLayerID);
-            string[] layerNames = GetSortingLayerNames ();
-            int[] layerID = GetSortingLayerUniqueIDs ();
-            int selected = -1;
-            int sID = sortingLayerID.intValue;
-            for (int i = 0; i < layerID.Length; i++)
-                if (sID == layerID [i])
-                    selected = i;
-            if (selected == -1)
-                for (int i = 0; i < layerID.Length; i++)
-                    if (layerID [i] == 0)
-                        selected = i;
-            selected = EditorGUILayout.Popup ("Sorting Layer", selected, layerNames);
-
-            sortingLayerID.intValue = layerID [selected];
-            EditorGUI.EndProperty ();
-            EditorGUILayout.EndHorizontal ();
-            #endregion
-
-            #region OrderInLayer
-            EditorGUILayout.BeginHorizontal ();
-            EditorGUI.BeginChangeCheck ();
-            EditorGUILayout.PropertyField (sortingOrder, new GUIContent ("Order in Layer"));
-            EditorGUILayout.EndHorizontal ();
-            serializedObject.ApplyModifiedProperties ();
-            #endregion
-        }
-
-        private string[] GetSortingLayerNames ()
-        {
-            Type internalEditorUtilityType = typeof(InternalEditorUtility);
-            PropertyInfo sortingLayersProperty = internalEditorUtilityType.GetProperty ("sortingLayerNames", BindingFlags.Static | BindingFlags.NonPublic);
-            return (string[])sortingLayersProperty.GetValue (null, new object[0]);
-        }
-
-        private int[] GetSortingLayerUniqueIDs ()
-        {
-            Type internalEditorUtilityType = typeof(InternalEditorUtility);
-            PropertyInfo sortingLayerUniqueIDsProperty = internalEditorUtilityType.GetProperty ("sortingLayerUniqueIDs", BindingFlags.Static | BindingFlags.NonPublic);
-            return (int[])sortingLayerUniqueIDsProperty.GetValue (null, new object[0]);
-        }
-        
         public void OnSceneGUI()
         {
             // was unable to figure out how to reflect this code, and it's not overridable.
@@ -207,12 +145,13 @@ namespace MyrkieUiTweaks
                 DestroyImmediate(_defaultEditor);
             }
         }
+        
+        #endregion
 
-        public static bool PrefixMethod()
-        {
-            return false;
-        }
-
+        #region redirected ui logic
+        /// <summary>
+        /// Postfixed OnInspectorGUI
+        /// </summary>
         public static void PostfixMethod()
         {
             // Collect common blend shapes among all selected objects
@@ -225,7 +164,14 @@ namespace MyrkieUiTweaks
                 var sharedMesh = renderer.sharedMesh;
                 if (sharedMesh == null) continue;
                 var blendShapes = new List<string>();
-                for (int i = 0; i < sharedMesh.blendShapeCount; i++)
+                var blendshapeCount = sharedMesh.blendShapeCount;
+                
+                if (blendshapeCount < 1)
+                {
+                    continue;
+                }
+                
+                for (int i = 0; i < blendshapeCount; i++)
                 {
                     blendShapes.Add(sharedMesh.GetBlendShapeName(i));
                 }
@@ -247,14 +193,19 @@ namespace MyrkieUiTweaks
             _searchQuery = EditorGUILayout.TextField("Search by:", _searchQuery);
             if (GUILayout.Button("Clear Search"))
             {
-                _searchQuery = "";
+                _searchQuery = string.Empty;
+            }
+
+            if (!string.IsNullOrEmpty(_searchQuery))
+            {
+                _showBlendshapes = true;
             }
 
             EditorGUILayout.EndHorizontal();
             _showBlendshapes = EditorGUILayout.Foldout(_showBlendshapes, "Blendshapes");
             if (!_showBlendshapes) return;
             if (PlayerSettings.legacyClampBlendShapeWeights)
-                EditorGUILayout.HelpBox(Styles.LegacyClampBlendShapeWeightsInfo.text, MessageType.Info);
+                EditorGUILayout.HelpBox(Styles.legacyClampBlendShapeWeightsInfo.text, MessageType.Info);
             SearchAndDrawBlendShapes(commonBlendShapes);
         }
 
@@ -280,28 +231,31 @@ namespace MyrkieUiTweaks
                 {
                     blendShapeWeightsProperty.arraySize = blendShapeCount;
                 }
-
+                serializedRenderer.ApplyModifiedProperties();
+                #endregion
+                
+                
+                if (blendShapeCount < 1)
+                {
+                    if (_defaultEditor.targets.Length <= 1)
+                    {
+                        EditorGUILayout.HelpBox(Styles.noactiveblendshapes.text, MessageType.Info);
+                    }
+                    continue;
+                }
+                
+                // build map of <Shape Name>, <SerializedProperty>
                 var blendShapeMap = new Dictionary<string, SerializedProperty>();
                 for (int i = 0; i < blendShapeCount; i++)
                 {
                     string blendShapeName = sharedMesh.GetBlendShapeName(i);
-                    var blendShapeWeightProperty =
-                        blendShapeWeightsProperty.GetArrayElementAtIndex(i);
+                    var blendShapeWeightProperty = blendShapeWeightsProperty.GetArrayElementAtIndex(i);
                     blendShapeMap[blendShapeName] = blendShapeWeightProperty;
                 }
 
-                #endregion
-
-                serializedRenderer.ApplyModifiedProperties();
-                if (blendShapeCount < 1)
-                {
-                    EditorGUILayout.HelpBox(Styles.NoActiveBlendShapes.text, MessageType.Info);
-                    return;
-                }
-
-                foreach (var blendShapeName in blendShapeMap.Keys.Where(blendShapeName => commonBlendShapes.Contains(blendShapeName) && 
-                             (string.IsNullOrEmpty(_searchQuery) ||
-                              blendShapeName.ToLower().Contains(_searchQuery.ToLower()))))
+                foreach (var blendShapeName in blendShapeMap.Keys.Where(blendShapeName => 
+                             commonBlendShapes.Contains(blendShapeName) && (string.IsNullOrEmpty(_searchQuery) ||
+                                                                            blendShapeName.ToLower().Contains(_searchQuery.ToLower()))))
                 {
                     EditorGUILayout.BeginHorizontal();
                     
@@ -334,8 +288,8 @@ namespace MyrkieUiTweaks
                 serializedRenderer.ApplyModifiedProperties();
             }
         }
-        
-        // https://forum.unity.com/threads/horizontal-line-in-editor-window.520812/#post-8551211
+
+        // https://discussions.unity.com/t/horizontal-line-in-editor-window/694105/12
         private static void DrawHorizontalGUILine(int height = 1)
         {
             GUILayout.Space(4);
@@ -349,5 +303,111 @@ namespace MyrkieUiTweaks
             EditorGUI.DrawRect(rect, lineColor);
             GUILayout.Space(4);
         }
+        
+        #endregion
+        
+        #region reflection
+        
+        public static bool PrefixMethod()
+        {
+            return false;
+        }
+        private static void ReflectStyles()
+        {
+            Type editorType = typeof(Editor).Assembly.GetType("UnityEditor.SkinnedMeshRendererEditor+Styles");
+            if (editorType != null)
+            {
+                static T GetFieldValue<T>(Type type, string fieldName)
+                {
+                    FieldInfo field = type.GetField(fieldName, BindingFlags.Static | BindingFlags.Public);
+                    return field != null ? (T)field.GetValue(null) : default(T);
+                }
+                
+                Styles.legacyClampBlendShapeWeightsInfo = GetFieldValue<GUIContent>(editorType, "legacyClampBlendShapeWeightsInfo");
+                Styles.meshNotSupportingSkinningInfo = GetFieldValue<GUIContent>(editorType, "meshNotSupportingSkinningInfo");
+                Styles.bounds = GetFieldValue<GUIContent>(editorType, "bounds");
+                Styles.quality = GetFieldValue<GUIContent>(editorType, "quality");
+                Styles.updateWhenOffscreen = GetFieldValue<GUIContent>(editorType, "updateWhenOffscreen");
+                Styles.mesh = GetFieldValue<GUIContent>(editorType, "mesh");
+                Styles.rootBone = GetFieldValue<GUIContent>(editorType, "rootBone");
+            }
+        }
+        
+        private static void ReflectSlider()
+        {
+            var sliderMethods = typeof(EditorGUILayout).GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                .Where(method => method.Name == "Slider")
+                .ToArray();
+
+            sliderMethod = sliderMethods.FirstOrDefault(method =>
+            {
+                ParameterInfo[] parameters = method.GetParameters();
+                return parameters.Length == 7 &&
+                       parameters[0].ParameterType == typeof(SerializedProperty) &&
+                       parameters[1].ParameterType == typeof(float) &&
+                       parameters[2].ParameterType == typeof(float) &&
+                       parameters[3].ParameterType == typeof(float) &&
+                       parameters[4].ParameterType == typeof(float) &&
+                       parameters[5].ParameterType == typeof(GUIContent) &&
+                       parameters[6].ParameterType == typeof(GUILayoutOption[]);
+            });
+        }
+
+        #endregion
+        
+        #region sortinglayers
+
+        private void SortingLayers()
+        {
+            GUIStyle style = new GUIStyle (GUI.skin.label);
+            style.richText = true;
+            EditorGUILayout.Space ();
+            DrawHorizontalGUILine();
+            #region SortingLayer
+            Rect firstHoriz = EditorGUILayout.BeginHorizontal ();
+            EditorGUI.BeginChangeCheck ();
+            EditorGUI.BeginProperty (firstHoriz, GUIContent.none, sortingLayerID);
+            string[] layerNames = GetSortingLayerNames ();
+            int[] layerID = GetSortingLayerUniqueIDs ();
+            int selected = -1;
+            int sID = sortingLayerID.intValue;
+            for (int i = 0; i < layerID.Length; i++)
+                if (sID == layerID [i])
+                    selected = i;
+            if (selected == -1)
+                for (int i = 0; i < layerID.Length; i++)
+                    if (layerID [i] == 0)
+                        selected = i;
+            selected = EditorGUILayout.Popup ("Sorting Layer", selected, layerNames);
+
+            sortingLayerID.intValue = layerID [selected];
+            EditorGUI.EndProperty ();
+            EditorGUILayout.EndHorizontal ();
+            #endregion
+
+            #region OrderInLayer
+            EditorGUILayout.BeginHorizontal ();
+            EditorGUI.BeginChangeCheck ();
+            EditorGUILayout.PropertyField (sortingOrder, new GUIContent ("Order in Layer"));
+            EditorGUILayout.EndHorizontal ();
+            serializedObject.ApplyModifiedProperties ();
+            #endregion
+        }
+
+        private string[] GetSortingLayerNames ()
+        {
+            Type internalEditorUtilityType = typeof(InternalEditorUtility);
+            PropertyInfo sortingLayersProperty = internalEditorUtilityType.GetProperty ("sortingLayerNames", BindingFlags.Static | BindingFlags.NonPublic);
+            return (string[])sortingLayersProperty.GetValue (null, new object[0]);
+        }
+
+        private int[] GetSortingLayerUniqueIDs ()
+        {
+            Type internalEditorUtilityType = typeof(InternalEditorUtility);
+            PropertyInfo sortingLayerUniqueIDsProperty = internalEditorUtilityType.GetProperty ("sortingLayerUniqueIDs", BindingFlags.Static | BindingFlags.NonPublic);
+            return (int[])sortingLayerUniqueIDsProperty.GetValue (null, new object[0]);
+        }
+
+        #endregion
     }
 }
