@@ -15,12 +15,16 @@ Unity-UI-Tweaks is a Unity package repository aimed at enhancing the usability a
 
 ### Option 1: Git Package (Recommended)
 1. Ensure you have Git installed on your system and registered in the `$PATH`.
-2. Copy the Git URL: https://github.com/Myrkie/Unity-UI-Tweaks.git
+2. Copy the Git URL: https://github.com/Myrkie/Unity-UI-Tweaks.git #versiontag
 3. Open Unity and navigate to `Window` > `Package Manager`.
 4. Click on the `+` button in the top-left corner of the Package Manager window.
 5. Select `Add package from git URL...`.
 6. Paste the copied Git URL into the input field.
 7. Click `Add` to import the package into your Unity project.
+
+
+
+[UPMGit Extension] is recommended if you wish to seamlessly change versions(https://github.com/mob-sakai/UpmGitExtension)
 
 ![firefox_deAvgkySZN](https://github.com/Myrkie/Unity-UI-Tweaks/assets/20288698/172df39f-6044-4276-aa1c-10fb1cded7cf)
 
@@ -51,7 +55,7 @@ After installation, you can start benefiting from the added functionalities prov
 ## Compatibility
 Unity-UI-Tweaks is compatible with Unity versions 2022.3.6f1. Ensure that your Unity project meets the minimum version requirements to utilize these enhancements.
 
-## Requirments
+## Requirements
 Unity-UI-Tweaks requires harmony, this by default is included with VRChats SDK V3.0.0 and above as it includes harmony, if you are using an older version or plan to use Chillout VR download and add harmony to your projects asset folder from https://github.com/pardeike/Harmony/releases
 
 ## Contributing
