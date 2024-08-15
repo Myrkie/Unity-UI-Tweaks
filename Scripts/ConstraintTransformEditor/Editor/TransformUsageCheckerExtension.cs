@@ -178,7 +178,7 @@ namespace MyrkieUiTweaks
                 _foldoutStates[uniqueKey] = !_collapseAll;
             }
 
-            bool foldoutState = EditorGUILayout.Foldout(_foldoutStates[uniqueKey], $"{obj.name} - {constraint.GetType().Name}", true);
+            bool foldoutState = EditorGUILayout.Foldout(_foldoutStates[uniqueKey], obj.name , true);
 
             _foldoutStates[uniqueKey] = foldoutState;
 
