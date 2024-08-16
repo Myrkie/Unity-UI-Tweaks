@@ -359,53 +359,48 @@ namespace MyrkieUiTweaks
 
         private void SortingLayers()
         {
-            GUIStyle style = new GUIStyle (GUI.skin.label);
-            style.richText = true;
-            EditorGUILayout.Space ();
+            EditorGUILayout.Space();
             DrawHorizontalGUILine();
-            #region SortingLayer
-            Rect firstHoriz = EditorGUILayout.BeginHorizontal ();
-            EditorGUI.BeginChangeCheck ();
-            EditorGUI.BeginProperty (firstHoriz, GUIContent.none, sortingLayerID);
-            string[] layerNames = GetSortingLayerNames ();
-            int[] layerID = GetSortingLayerUniqueIDs ();
-            int selected = -1;
-            int sID = sortingLayerID.intValue;
-            for (int i = 0; i < layerID.Length; i++)
-                if (sID == layerID [i])
-                    selected = i;
-            if (selected == -1)
-                for (int i = 0; i < layerID.Length; i++)
-                    if (layerID [i] == 0)
-                        selected = i;
-            selected = EditorGUILayout.Popup ("Sorting Layer", selected, layerNames);
 
-            sortingLayerID.intValue = layerID [selected];
-            EditorGUI.EndProperty ();
-            EditorGUILayout.EndHorizontal ();
+            #region SortingLayer
+            int selectedLayer = GetSelectedLayerIndex();
+            string[] layerNames = GetSortingLayerNames();
+            selectedLayer = EditorGUILayout.Popup("Sorting Layer", selectedLayer, layerNames);
+            sortingLayerID.intValue = GetSortingLayerUniqueIDs()[selectedLayer];
             #endregion
 
             #region OrderInLayer
-            EditorGUILayout.BeginHorizontal ();
-            EditorGUI.BeginChangeCheck ();
-            EditorGUILayout.PropertyField (sortingOrder, new GUIContent ("Order in Layer"));
-            EditorGUILayout.EndHorizontal ();
-            serializedObject.ApplyModifiedProperties ();
+            sortingOrder ??= serializedObject.FindProperty("m_SortingOrder");
+            EditorGUILayout.PropertyField(sortingOrder, new GUIContent("Order In Layer"));
+            serializedObject.ApplyModifiedProperties();
             #endregion
+        }
+
+
+        private int GetSelectedLayerIndex()
+        {
+            int[] layerIDs = GetSortingLayerUniqueIDs();
+
+            sortingLayerID ??= serializedObject.FindProperty("m_SortingLayerID");
+            
+            int selectedLayerID = sortingLayerID.intValue;
+
+            int selectedIndex = Array.IndexOf(layerIDs, selectedLayerID);
+            return selectedIndex != -1 ? selectedIndex : 0;
         }
 
         private string[] GetSortingLayerNames ()
         {
-            Type internalEditorUtilityType = typeof(InternalEditorUtility);
-            PropertyInfo sortingLayersProperty = internalEditorUtilityType.GetProperty ("sortingLayerNames", BindingFlags.Static | BindingFlags.NonPublic);
-            return (string[])sortingLayersProperty.GetValue (null, new object[0]);
+            return (string[])typeof(InternalEditorUtility)
+                .GetProperty("sortingLayerNames", BindingFlags.Static | BindingFlags.NonPublic)
+                ?.GetValue(null, null);
         }
 
         private int[] GetSortingLayerUniqueIDs ()
         {
-            Type internalEditorUtilityType = typeof(InternalEditorUtility);
-            PropertyInfo sortingLayerUniqueIDsProperty = internalEditorUtilityType.GetProperty ("sortingLayerUniqueIDs", BindingFlags.Static | BindingFlags.NonPublic);
-            return (int[])sortingLayerUniqueIDsProperty.GetValue (null, new object[0]);
+            return (int[])typeof(InternalEditorUtility)
+                .GetProperty("sortingLayerUniqueIDs", BindingFlags.Static | BindingFlags.NonPublic)
+                ?.GetValue(null, null);
         }
 
         #endregion

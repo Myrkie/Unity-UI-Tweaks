@@ -10,7 +10,15 @@ namespace MyrkieUiTweaks
         public static bool AllowBlendshapeClamping = true;
         public static bool DebugLogging = true;
         public static bool DisableMouseJumping = true;
-        public static bool EnableSortingLayers;
+        public static bool EnableSortingLayers = false;
+
+        private static bool statesLoaded = false;
+
+        static UserChoicePatcherUI()
+        {
+            // this is awful but it works
+            EditorApplication.update += LoadToggleStatesIfNeeded;
+        }
 
         [MenuItem("Tools/Myrkur/UserChoicePatcherUI Patch Settings")]
         public static void ShowWindow()
@@ -18,13 +26,10 @@ namespace MyrkieUiTweaks
             GetWindow<UserChoicePatcherUI>("UserChoicePatcherUI Patch Settings");
         }
 
-        private void Awake()
-        {
-            LoadToggleStates();
-        }
-
         private void OnGUI()
         {
+            EnsureToggleStatesLoaded();
+
             GUILayout.Label("UserChoicePatcherUI Patch Settings", EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
@@ -68,22 +73,34 @@ namespace MyrkieUiTweaks
             {
                 EditorPrefs.SetBool("UserChoicePatcher_EnableSortingLayers", EnableSortingLayers);
             }
-            
 
             GUILayout.TextArea(
                 "Changing any of these settings will require a restart of the project or reimport of the package.");
         }
 
-        private void OnEnable()
+        private static void EnsureToggleStatesLoaded()
         {
+            if (statesLoaded) return;
+            
             LoadToggleStates();
+            statesLoaded = true;
         }
 
-        private void LoadToggleStates()
+        private static void LoadToggleStatesIfNeeded()
+        {
+            if (statesLoaded) return;
+            
+            LoadToggleStates();
+            statesLoaded = true;
+            EditorApplication.update -= LoadToggleStatesIfNeeded;
+        }
+
+        private static void LoadToggleStates()
         {
             DebugLogging = EditorPrefs.GetBool("UserChoicePatcher_DebugLogging", true);
             BlendShapeSearch = EditorPrefs.GetBool("UserChoicePatcher_BlendShapeSearch", true);
             ConstraintTransformEditor = EditorPrefs.GetBool("UserChoicePatcher_ConstraintTransformEditor", true);
+
 #if VRC_SDK_VRCSDK3
             AllowBlendshapeClamping = EditorPrefs.GetBool("UserChoicePatcher_AllowBlendshapeClamping", true);
 #endif

@@ -3,7 +3,9 @@ using System;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+#if VRC_SDK_VRCSDK3
 using VRC.Editor;
+#endif
 
 namespace MyrkieUiTweaks
 {

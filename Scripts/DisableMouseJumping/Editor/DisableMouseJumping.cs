@@ -9,19 +9,11 @@ namespace MyrkieUiTweaks
     [InitializeOnLoad]
     public class DisableMouseJumping : Editor
     {
-        private static Harmony _harmonyInstance;
-
-        private static MethodInfo GetMethod(string MethodName,
-            BindingFlags bindingAttributes = BindingFlags.NonPublic | BindingFlags.Static)
-        {
-            return typeof(DisableMouseJumping).GetMethod(MethodName, bindingAttributes);
-        }
+        private static readonly Harmony _harmonyInstance = new("DisableMouseJumping");
 
         static DisableMouseJumping()
         {
             if (!UserChoicePatcherUI.DisableMouseJumping) return;
-
-            _harmonyInstance = new Harmony("DisableMouseJumping");
 
             try
             {
@@ -30,9 +22,8 @@ namespace MyrkieUiTweaks
                     Debug.Log("Attempting to patch EditorWindow.OnGUI");
                 }
 
-                var method = typeof(EditorWindow).GetMethod("BeginWindows",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                _harmonyInstance.Patch(method, postfix: new HarmonyMethod(GetMethod(nameof(PostfixMethod))));
+                var method = GetEditorWindowMethod();
+                _harmonyInstance.Patch(method, postfix: new HarmonyMethod(GetPostfixMethod()));
                 if (UserChoicePatcherUI.DebugLogging)
                 {
                     Debug.Log("Patched EditorWindow.OnGUI successfully!");
@@ -46,8 +37,17 @@ namespace MyrkieUiTweaks
                 }
             }
         }
+        private static MethodInfo GetPostfixMethod()
+        {
+            return typeof(DisableMouseJumping).GetMethod(nameof(DisableMouseJump), BindingFlags.NonPublic | BindingFlags.Static);
+        }
+        
+        private static MethodBase GetEditorWindowMethod()
+        {
+            return typeof(EditorWindow).GetMethod("BeginWindows", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        }
 
-        private static void PostfixMethod()
+        private static void DisableMouseJump()
         {
             EditorGUIUtility.SetWantsMouseJumping(0);
         }

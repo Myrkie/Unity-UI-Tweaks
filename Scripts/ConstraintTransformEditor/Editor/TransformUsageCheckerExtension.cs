@@ -73,8 +73,6 @@ namespace MyrkieUiTweaks
 
             foreach (GameObject obj in allGameObjects)
             {
-                if (!obj.scene.IsValid()) continue;
-
                 IConstraint[] constraints = obj.GetComponents<IConstraint>();
                 foreach (IConstraint constraint in constraints)
                 {
@@ -102,8 +100,6 @@ namespace MyrkieUiTweaks
 
             foreach (GameObject obj in allGameObjects)
             {
-                if (!obj.scene.IsValid()) continue;
-
                 VRCConstraintBase[] constraints = obj.GetComponents<VRCConstraintBase>();
                 foreach (VRCConstraintBase constraint in constraints)
                 {
