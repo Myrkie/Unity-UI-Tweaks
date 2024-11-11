@@ -62,7 +62,7 @@ Unity-UI-Tweaks requires harmony, this by default is included with VRChats SDK V
 Contributions to Unity-UI-Tweaks are welcome! If you have ideas for additional Harmony patches or improvements to existing ones, feel free to submit a pull request or open an issue on this repository.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
 
 ## Acknowledgements
 Unity-UI-Tweaks utilizes Harmony patches, an open-source library for patching Unity assemblies at runtime. Special thanks to the creators and contributors of Harmony for making these enhancements possible.
