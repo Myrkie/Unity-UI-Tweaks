@@ -24,7 +24,7 @@ Unity-UI-Tweaks is a Unity package repository aimed at enhancing the usability a
 
 
 
-[UPMGit Extension] is recommended if you wish to seamlessly change versions(https://github.com/mob-sakai/UpmGitExtension)
+[UPMGit Extension](https://github.com/mob-sakai/UpmGitExtension) is recommended if you wish to seamlessly change versions
 
 ![firefox_deAvgkySZN](https://github.com/Myrkie/Unity-UI-Tweaks/assets/20288698/172df39f-6044-4276-aa1c-10fb1cded7cf)
 
